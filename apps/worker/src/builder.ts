@@ -381,7 +381,51 @@ CMD ["npm", "start"]
     // 10. Configure Nginx Proxy
     await appendLog(`Generating Nginx configuration...\n`);
     const baseDomain = process.env.BASE_DOMAIN || 'localhost';
-    const nginxConfig = `
+    
+    // Check if wildcard SSL certificates exist for the base domain on Linux
+    const sslCertPath = `/etc/letsencrypt/live/${baseDomain}/fullchain.pem`;
+    const sslKeyPath = `/etc/letsencrypt/live/${baseDomain}/privkey.pem`;
+    
+    let hasSSL = false;
+    if (!isWindows()) {
+      try {
+        await fs.promises.access(sslCertPath);
+        await fs.promises.access(sslKeyPath);
+        hasSSL = true;
+      } catch {
+        // Wildcard SSL certs not found or inaccessible, fallback to HTTP
+      }
+    }
+
+    let nginxConfig = '';
+    if (hasSSL) {
+      await appendLog(`Wildcard SSL certificates detected. Generating secure HTTPS server blocks...\n`);
+      nginxConfig = `
+server {
+    listen 80;
+    server_name ${project.slug}.${baseDomain};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${project.slug}.${baseDomain};
+
+    ssl_certificate ${sslCertPath};
+    ssl_certificate_key ${sslKeyPath};
+
+    location / {
+        proxy_pass http://127.0.0.1:${hostPort};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+`;
+    } else {
+      await appendLog(`No wildcard SSL certificates detected. Falling back to HTTP-only...\n`);
+      nginxConfig = `
 server {
     listen 80;
     server_name ${project.slug}.${baseDomain};
@@ -395,6 +439,7 @@ server {
     }
 }
 `;
+    }
 
     if (isWindows()) {
       // On Windows development, we log Nginx config to a local folder and skip reloading
