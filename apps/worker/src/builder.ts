@@ -140,8 +140,14 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
     await appendLog(`Cloning repository: ${project.githubRepo}...\n`);
     const git = simpleGit();
     
-    // We assume public repo for MVP, but allow token auth in the future if available
-    const repoUrl = `https://github.com/${project.githubRepo}.git`;
+    // Support both full GitHub URLs and owner/repo formats
+    let repoUrl = project.githubRepo.trim();
+    if (!repoUrl.startsWith('http://') && !repoUrl.startsWith('https://')) {
+      repoUrl = `https://github.com/${repoUrl}.git`;
+    } else if (!repoUrl.endsWith('.git')) {
+      repoUrl = `${repoUrl}.git`;
+    }
+    
     await git.clone(repoUrl, projectBuildPath);
     await appendLog(`Successfully cloned repository.\n`);
 
