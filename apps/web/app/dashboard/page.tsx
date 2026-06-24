@@ -214,12 +214,15 @@ export default function Dashboard() {
       {/* Header */}
       <header className="border-b border-neutral-900 px-6 py-4 flex justify-between items-center bg-black">
         <div className="flex items-center gap-4">
-          <span 
+          <div 
             onClick={() => router.push('/dashboard')}
-            className="font-mono text-lg font-bold tracking-wider cursor-pointer select-none"
+            className="flex items-center gap-3 cursor-pointer select-none"
           >
-            [C] CODESHIP
-          </span>
+            <img src="/logo.png" alt="CodeShip Logo" className="w-8 h-8 rounded object-cover" />
+            <span className="font-mono text-lg font-bold tracking-wider">
+              CODESHIP
+            </span>
+          </div>
         </div>
 
         {user && (

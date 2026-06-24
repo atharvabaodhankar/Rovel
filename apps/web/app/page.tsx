@@ -6,9 +6,10 @@ export default function LandingPage() {
     <div className="flex-1 flex flex-col justify-between bg-black text-white">
       {/* Navigation */}
       <header className="border-b border-neutral-900 px-6 py-4 flex justify-between items-center bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="CodeShip Logo" className="w-8 h-8 rounded object-cover" />
           <span className="font-mono text-xl font-bold tracking-wider select-none">
-            [C] CODESHIP
+            CODESHIP
           </span>
         </div>
         <nav className="flex items-center gap-6">
