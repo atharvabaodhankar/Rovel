@@ -261,6 +261,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       case 'react':
       case 'react-vite':
         return 'React (Vite)';
+      case 'static':
+        return 'Static (Vanilla)';
       case 'nextjs': return 'Next.js';
       case 'express': return 'Express.js';
       default: return fw;

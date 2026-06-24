@@ -168,36 +168,49 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
 
     // 3. Detect Framework
     const packageJsonPath = path.join(projectBuildPath, 'package.json');
+    const indexHtmlPath = path.join(projectBuildPath, 'index.html');
+    
     let packageJsonExists = false;
     try {
       await fs.promises.access(packageJsonPath);
       packageJsonExists = true;
     } catch {}
 
-    if (!packageJsonExists) {
-      throw new Error('No package.json found in the repository root');
-    }
-
-    const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf8');
-    const packageJson = JSON.parse(packageJsonContent);
-    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    let indexHtmlExists = false;
+    try {
+      await fs.promises.access(indexHtmlPath);
+      indexHtmlExists = true;
+    } catch {}
 
     let framework = '';
     let internalPort = 3000;
-    
-    if (deps.next) {
-      framework = 'nextjs';
-      internalPort = 3000;
-    } else if ((deps.react || deps['react-dom']) && deps.vite) {
-      framework = 'react-vite';
-      internalPort = 80; // React app served via Nginx in container
-    } else if (deps.express) {
-      framework = 'express';
-      internalPort = 3000;
-    } else {
+
+    if (packageJsonExists) {
+      const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf8');
+      const packageJson = JSON.parse(packageJsonContent);
+      const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+
+      if (deps.next) {
+        framework = 'nextjs';
+        internalPort = 3000;
+      } else if ((deps.react || deps['react-dom']) && deps.vite) {
+        framework = 'react-vite';
+        internalPort = 80; // React app served via Nginx in container
+      } else if (deps.express) {
+        framework = 'express';
+        internalPort = 3000;
+      }
+    }
+
+    // Fallback: If no node framework detected but index.html exists, it's a vanilla static site
+    if (!framework && indexHtmlExists) {
+      framework = 'static';
+      internalPort = 80; // Static served via Nginx on port 80
+    }
+
+    if (!framework) {
       throw new Error(
-        'Unsupported framework. CodeShip MVP only supports Next.js, React (Vite), and Express.js applications. ' +
-        'Ensure your package.json contains "next", "express", or both "react" and "vite" in dependencies.'
+        'Unsupported framework. CodeShip MVP supports Next.js, React (Vite), Express.js, or vanilla static sites (index.html at root).'
       );
     }
 
@@ -226,6 +239,13 @@ RUN npm run build
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy custom nginx config if exists, or use default
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+`;
+    } else if (framework === 'static') {
+      dockerfileContent = `
+FROM nginx:alpine
+COPY . /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 `;

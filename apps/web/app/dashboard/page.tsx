@@ -190,6 +190,8 @@ export default function Dashboard() {
       case 'react':
       case 'react-vite':
         return 'React (Vite)';
+      case 'static':
+        return 'Static (Vanilla)';
       case 'nextjs': return 'Next.js';
       case 'express': return 'Express.js';
       default: return fw;
@@ -420,6 +422,7 @@ export default function Dashboard() {
                   className="bg-black border border-neutral-900 rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50"
                 >
                   <option value="react-vite">React (Vite)</option>
+                  <option value="static">Static (Vanilla)</option>
                   <option value="nextjs">Next.js</option>
                   <option value="express">Express.js</option>
                 </select>
