@@ -1,0 +1,21 @@
+{
+  "name": "codeship-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:all": "concurrently \"npm run dev -w apps/web\" \"npm run dev -w apps/worker\"",
+    "build:all": "npm run build --workspaces --if-present",
+    "db:generate": "npm run generate -w packages/db",
+    "db:push": "npm run db:push -w packages/db",
+    "db:studio": "npm run studio -w packages/db"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2"
+  }
+}
