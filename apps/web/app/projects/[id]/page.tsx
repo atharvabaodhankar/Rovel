@@ -243,6 +243,7 @@ interface Project {
   slug: string;
   githubRepo: string;
   framework: string;
+  rootDirectory: string;
   status: string;
   containerId: string | null;
   assignedPort: number | null;
@@ -1052,6 +1053,12 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <span className="text-neutral-500 text-[10px] font-mono uppercase">Project ID</span>
                   <span className="font-mono text-neutral-300 text-sm bg-black border border-layout px-2 py-1 rounded w-fit select-all">
                     {project.id}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-neutral-500 text-[10px] font-mono uppercase">Root Directory</span>
+                  <span className="font-mono text-neutral-300 text-sm bg-black border border-layout px-2 py-1 rounded w-fit">
+                    {project.rootDirectory || '(Repository Root)'}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">

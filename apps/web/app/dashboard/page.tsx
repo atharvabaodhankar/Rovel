@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [name, setName] = useState('');
   const [githubRepo, setGithubRepo] = useState('');
   const [framework, setFramework] = useState('react-vite');
+  const [rootDirectory, setRootDirectory] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,6 +61,10 @@ export default function Dashboard() {
   const [detectingFramework, setDetectingFramework] = useState(false);
   const [detectedFramework, setDetectedFramework] = useState<string | null>(null);
   const [detectionReason, setDetectionReason] = useState<string | null>(null);
+
+  // Directory selection states
+  const [repoDirs, setRepoDirs] = useState<{ path: string; label: string; isProject: boolean }[]>([]);
+  const [loadingDirs, setLoadingDirs] = useState(false);
 
   // Helper to parse GitHub repository owner/repo from various formats
   const parseGitHubRepo = (val: string): string => {
@@ -113,11 +118,13 @@ export default function Dashboard() {
       setDetectedFramework(null);
       setDetectionReason(null);
       setDetectingFramework(false);
+      setRepoDirs([]);
+      setLoadingDirs(false);
     }
   }, [isModalOpen]);
 
   // Framework Auto-Detection API trigger
-  const detectFrameworkForRepo = async (repoFullName: string) => {
+  const detectFrameworkForRepo = async (repoFullName: string, path: string = '') => {
     if (!repoFullName || !repoFullName.includes('/')) return;
     
     setDetectingFramework(true);
@@ -125,7 +132,7 @@ export default function Dashboard() {
     setDetectionReason(null);
     
     try {
-      const res = await fetch(`/api/github/detect-framework?repo=${encodeURIComponent(repoFullName)}`);
+      const res = await fetch(`/api/github/detect-framework?repo=${encodeURIComponent(repoFullName)}&path=${encodeURIComponent(path)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.framework) {
@@ -141,13 +148,33 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch directory list for a repository
+  const fetchRepoDirectories = async (repoFullName: string) => {
+    if (!repoFullName || !repoFullName.includes('/')) return;
+    setLoadingDirs(true);
+    setRepoDirs([]);
+    try {
+      const res = await fetch(`/api/github/dirs?repo=${encodeURIComponent(repoFullName)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRepoDirs(data.directories || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch repo directories:', err);
+    } finally {
+      setLoadingDirs(false);
+    }
+  };
+
   // Handle repository selection from list
   const handleSelectRepo = (repo: any) => {
     setGithubRepo(repo.fullName);
     if (!name.trim()) {
       setName(repo.name);
     }
-    detectFrameworkForRepo(repo.fullName);
+    setRootDirectory(''); // Reset directory on new selection
+    detectFrameworkForRepo(repo.fullName, '');
+    fetchRepoDirectories(repo.fullName);
   };
 
   // Handle URL input blur/normalization
@@ -162,7 +189,9 @@ export default function Dashboard() {
       if (!name.trim()) {
         setName(repoName);
       }
-      detectFrameworkForRepo(parsed);
+      setRootDirectory(''); // Reset directory on new selection
+      detectFrameworkForRepo(parsed, '');
+      fetchRepoDirectories(parsed);
     }
   };
 
@@ -256,7 +285,7 @@ export default function Dashboard() {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, githubRepo: normalizedRepo, framework }),
+        body: JSON.stringify({ name, githubRepo: normalizedRepo, framework, rootDirectory }),
       });
 
       if (!res.ok) {
@@ -272,6 +301,7 @@ export default function Dashboard() {
       setName('');
       setGithubRepo('');
       setFramework('react-vite');
+      setRootDirectory('');
       
       // Redirect to the new project details page
       router.push(`/projects/${data.project.id}`);
@@ -904,6 +934,67 @@ export default function Dashboard() {
                   className="bg-black border border-[#1A1A1A] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary"
                   required
                 />
+              </div>
+
+              {/* Root Directory Field */}
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-mono uppercase tracking-wider text-neutral-400">
+                    Root Directory
+                  </label>
+                  <span className="text-[10px] text-neutral-500 font-mono font-light">Optional</span>
+                </div>
+
+                {githubRepo && (
+                  <div className="flex flex-col gap-1.5">
+                    {loadingDirs ? (
+                      <div className="flex items-center gap-2 text-[11px] text-neutral-500 font-mono py-1">
+                        <Loader2 size={12} className="animate-spin text-neutral-500" />
+                        <span>Scanning repository folders...</span>
+                      </div>
+                    ) : repoDirs.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        <select
+                          value={rootDirectory}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setRootDirectory(val);
+                            detectFrameworkForRepo(parseGitHubRepo(githubRepo), val === '__custom__' ? '' : val);
+                          }}
+                          disabled={submitting}
+                          className="bg-black border border-[#1A1A1A] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary font-mono cursor-pointer"
+                        >
+                          {repoDirs.map((dir) => (
+                            <option key={dir.path} value={dir.path}>
+                              {dir.label}
+                            </option>
+                          ))}
+                          <option value="__custom__">-- Enter custom path --</option>
+                        </select>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {(!githubRepo || !repoDirs.length || rootDirectory === '__custom__' || !repoDirs.some(d => d.path === rootDirectory)) && (
+                  <input
+                    type="text"
+                    placeholder="e.g. frontend or apps/web (leave blank if at root)"
+                    value={rootDirectory === '__custom__' ? '' : rootDirectory}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRootDirectory(val);
+                    }}
+                    onBlur={() => {
+                      const parsed = parseGitHubRepo(githubRepo);
+                      if (parsed && rootDirectory && rootDirectory !== '__custom__') {
+                        detectFrameworkForRepo(parsed, rootDirectory);
+                      }
+                    }}
+                    disabled={submitting}
+                    className="bg-black border border-[#1A1A1A] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary font-mono"
+                  />
+                )}
               </div>
 
               {/* Editable Framework Dropdown */}

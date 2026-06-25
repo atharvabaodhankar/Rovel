@@ -166,9 +166,13 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
       // Ignore if git log fails
     }
 
-    // 3. Detect Framework
-    const packageJsonPath = path.join(projectBuildPath, 'package.json');
-    const indexHtmlPath = path.join(projectBuildPath, 'index.html');
+    // 3. Detect Framework & Subdirectory
+    const appRootPath = project.rootDirectory 
+      ? path.join(projectBuildPath, project.rootDirectory) 
+      : projectBuildPath;
+
+    const packageJsonPath = path.join(appRootPath, 'package.json');
+    const indexHtmlPath = path.join(appRootPath, 'index.html');
     
     let packageJsonExists = false;
     try {
@@ -222,7 +226,7 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
 
     // 4. Generate Dockerfile automatically
     await appendLog(`Generating Dockerfile for ${framework}...\n`);
-    const dockerfilePath = path.join(projectBuildPath, 'Dockerfile');
+    const dockerfilePath = path.join(appRootPath, 'Dockerfile');
     let dockerfileContent = '';
 
     if (framework === 'react-vite') {
@@ -286,7 +290,7 @@ CMD ["npm", "start"]
     const fullImageName = `${imageName}:${imageTag}`;
 
     await appendLog(`Building Docker image: ${fullImageName}...\n`);
-    await runCommand('docker', ['build', '-t', fullImageName, '.'], projectBuildPath, appendLog);
+    await runCommand('docker', ['build', '-t', fullImageName, '.'], appRootPath, appendLog);
     await appendLog(`Successfully built Docker image.\n`);
 
     // Clean up intermediate dangling builder stages to save disk space

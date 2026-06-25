@@ -30,6 +30,7 @@ model Project {
   status       String                @default("PENDING") // PENDING, BUILDING, READY, FAILED
   containerId  String?               @map("container_id")
   assignedPort Int?                  @map("assigned_port")
+  rootDirectory String                @default("") @map("root_directory")
   createdAt    DateTime              @default(now()) @map("created_at")
   deployments  Deployment[]
   envVars      EnvironmentVariable[]

@@ -57,10 +57,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, githubRepo, framework } = body;
+    const { name, githubRepo, framework, rootDirectory } = body;
 
     if (!name || !githubRepo || !framework) {
       return NextResponse.json({ error: 'Missing required fields: name, githubRepo, framework' }, { status: 400 });
+    }
+
+    let sanitizedRootDirectory = '';
+    if (rootDirectory && typeof rootDirectory === 'string') {
+      sanitizedRootDirectory = rootDirectory
+        .replace(/\\/g, '/')
+        .replace(/^\/+|\/+$/g, '')
+        .trim();
     }
 
     const slug = await generateUniqueSlug(name);
@@ -73,6 +81,7 @@ export async function POST(request: Request) {
         slug,
         githubRepo,
         framework,
+        rootDirectory: sanitizedRootDirectory,
         status: 'PENDING',
       },
     });

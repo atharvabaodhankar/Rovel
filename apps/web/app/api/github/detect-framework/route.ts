@@ -10,6 +10,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const repo = searchParams.get('repo'); // format: owner/repo
+    const pathParam = searchParams.get('path') || '';
 
     if (!repo || !repo.includes('/')) {
       return NextResponse.json({ error: 'Invalid repository format. Expected owner/repo.' }, { status: 400 });
@@ -36,7 +37,9 @@ export async function GET(request: Request) {
 
     for (const branch of branches) {
       try {
-        const url = `https://api.github.com/repos/${owner}/${repoName}/contents/package.json?ref=${branch}`;
+        const cleanPath = pathParam.trim().replace(/^\/+|\/+$/g, '');
+        const packageJsonPath = cleanPath ? `${cleanPath}/package.json` : 'package.json';
+        const url = `https://api.github.com/repos/${owner}/${repoName}/contents/${packageJsonPath}?ref=${branch}`;
         const response = await fetch(url, { headers });
 
         if (response.ok) {
