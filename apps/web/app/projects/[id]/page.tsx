@@ -9,6 +9,219 @@ import {
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 
+// Monochrome Confetti Particle Component
+function MonochromeConfetti({ active, onComplete }: { active: boolean; onComplete: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const colors = ['#FFFFFF', '#E4E4E7', '#A1A1AA', '#71717A', '#3F3F46'];
+    const particleCount = 100;
+    const particles: {
+      x: number;
+      y: number;
+      size: number;
+      color: string;
+      speedX: number;
+      speedY: number;
+      rotation: number;
+      rotationSpeed: number;
+    }[] = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * -canvas.height - 20,
+        size: Math.random() * 5 + 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        speedX: Math.random() * 3 - 1.5,
+        speedY: Math.random() * 4 + 2,
+        rotation: Math.random() * 360,
+        rotationSpeed: Math.random() * 3 - 1.5,
+      });
+    }
+
+    const startTime = Date.now();
+    const duration = 5000; // 5 seconds
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed > duration) {
+        onComplete();
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p) => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.rotationSpeed;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [active, onComplete]);
+
+  if (!active) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-50 w-full h-full"
+      style={{ mixBlendMode: 'screen' }}
+    />
+  );
+}
+
+// Build Logs Syntax Highlighter Helper
+const formatLogLine = (line: string, index: number) => {
+  const trimmed = line.trim();
+  if (!trimmed) return <div key={index} className="h-4" />;
+
+  // 1. Error lines (High priority)
+  if (
+    /failed/i.test(line) ||
+    /error/i.test(line) ||
+    /invalid reference/i.test(line) ||
+    /exit code/i.test(line) ||
+    /exception/i.test(line)
+  ) {
+    return (
+      <div key={index} className="text-red-400 font-mono text-xs">
+        <span className="text-red-500 font-bold mr-2">●</span>
+        {line}
+      </div>
+    );
+  }
+
+  // 2. Success lines
+  if (
+    /successfully/i.test(line) ||
+    /successful/i.test(line) ||
+    /success/i.test(line) ||
+    /ready/i.test(line) ||
+    /completed/i.test(line)
+  ) {
+    return (
+      <div key={index} className="text-green-400 font-mono text-xs font-semibold">
+        <span className="text-green-500 font-bold mr-2">✓</span>
+        {line}
+      </div>
+    );
+  }
+
+  // 3. Command lines (starts with $ or sudo or docker run)
+  if (line.startsWith('$') || line.startsWith('  $') || /^\s*\$\s+/.test(line) || line.includes('docker run') || line.includes('docker build')) {
+    return (
+      <div key={index} className="text-white font-bold font-mono text-xs py-1.5 border-t border-b border-[#1E1E22] my-2 bg-[#0A0A0B] px-3 rounded flex items-center gap-2">
+        <span className="text-neutral-600 font-bold select-none">$</span>
+        <span>{line.replace(/^\s*\$\s*/, '')}</span>
+      </div>
+    );
+  }
+
+  // 4. Docker build step logs (e.g., #12 DONE, #12 CACHED, #12 [builder 2/6])
+  const dockerStepMatch = line.match(/^#(\d+)\s+(.*)$/);
+  if (dockerStepMatch) {
+    const stepNum = dockerStepMatch[1];
+    const rest = dockerStepMatch[2];
+    
+    let restColor = 'text-neutral-500';
+    if (rest.includes('DONE')) {
+      restColor = 'text-green-400/90 font-medium';
+    } else if (rest.includes('CACHED')) {
+      restColor = 'text-neutral-600 font-light';
+    } else if (rest.includes('transferring') || rest.includes('resolve')) {
+      restColor = 'text-neutral-500 italic';
+    } else {
+      restColor = 'text-neutral-300';
+    }
+
+    return (
+      <div key={index} className="font-mono text-xs flex gap-2 leading-relaxed">
+        <span className="text-neutral-600 font-semibold shrink-0 select-none">#{stepNum}</span>
+        <span className={restColor}>{rest}</span>
+      </div>
+    );
+  }
+
+  // 5. Framework and tool build outputs (Vite/Next/npm)
+  if (/vite/i.test(line) || /transforming/i.test(line) || /built in/i.test(line) || /rendering chunks/i.test(line)) {
+    return (
+      <div key={index} className="text-purple-400 font-mono text-xs">
+        <span className="text-purple-600 mr-2 select-none">⚡</span>
+        {line}
+      </div>
+    );
+  }
+
+  // 6. Warnings
+  if (/warning/i.test(line) || /notice/i.test(line)) {
+    return (
+      <div key={index} className="text-yellow-400/90 font-mono text-xs">
+        <span className="text-yellow-500 mr-2 select-none">⚠</span>
+        {line}
+      </div>
+    );
+  }
+
+  // 7. File outputs or port mappings (e.g. dist/index.html 0.46 kB)
+  if (/dist\//.test(line) || /index\.html/.test(line) || /assets\//.test(line) || /\d+\s*kB/.test(line)) {
+    return (
+      <div key={index} className="text-neutral-500 font-mono pl-5 text-[11px] leading-relaxed">
+        {line}
+      </div>
+    );
+  }
+
+  // Default fallback line
+  return (
+    <div key={index} className="text-neutral-400 font-mono text-xs leading-relaxed">
+      {line}
+    </div>
+  );
+};
+
+const formatLogs = (logs: string) => {
+  if (!logs) return <div className="text-neutral-600 font-mono text-xs">Initializing logs...</div>;
+  const lines = logs.split('\n');
+  return lines.map((line, index) => formatLogLine(line, index));
+};
+
 interface EnvVar {
   id?: string;
   key: string;
@@ -53,6 +266,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'deployments' | 'history' | 'env' | 'settings'>('deployments');
+  
+  // Deployment Success Notification & Confetti States
+  const [lastStatus, setLastStatus] = useState<string | null>(null);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [triggerConfetti, setTriggerConfetti] = useState(false);
   
   // Interactive historic deployment inspection
   const [selectedDeploymentId, setSelectedDeploymentId] = useState<string | null>(null);
@@ -142,6 +360,22 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
     return () => clearInterval(interval);
   }, [project]);
+
+  // Status transition listener to trigger notification and confetti on success
+  useEffect(() => {
+    if (project) {
+      if (lastStatus && (lastStatus === 'BUILDING' || lastStatus === 'PENDING') && project.status === 'READY') {
+        setShowSuccessNotification(true);
+        setTriggerConfetti(true);
+        // Automatically hide notification after 6 seconds
+        const timer = setTimeout(() => {
+          setShowSuccessNotification(false);
+        }, 6000);
+        return () => clearTimeout(timer);
+      }
+      setLastStatus(project.status);
+    }
+  }, [project?.status, lastStatus]);
 
   // Auto scroll terminal to bottom when logs update
   useEffect(() => {
@@ -616,10 +850,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     </div>
                     
                     {/* Terminal Body */}
-                    <div className="flex-1 p-5 overflow-y-auto font-mono text-[12px] leading-relaxed flex flex-col bg-black text-neutral-300 select-text selection:bg-neutral-800">
-                      <pre className="white-space-pre-wrap break-all flex-1 select-text">
-                        {activeDeployment.logs || 'Initializing logs...\n'}
-                      </pre>
+                    <div className="flex-1 p-5 overflow-y-auto font-mono text-[12px] leading-relaxed flex flex-col bg-black text-neutral-300 select-text selection:bg-neutral-850">
+                      <div className="white-space-pre-wrap break-all flex-1 select-text space-y-1">
+                        {formatLogs(activeDeployment.logs)}
+                      </div>
                       
                       {/* Pulsing blinking cursor */}
                       {(activeDeployment.status === 'BUILDING' || activeDeployment.status === 'PENDING') && (
@@ -870,6 +1104,46 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         )}
 
       </div>
+
+      {/* Monochrome Confetti Canvas */}
+      <MonochromeConfetti 
+        active={triggerConfetti} 
+        onComplete={() => setTriggerConfetti(false)} 
+      />
+
+      {/* Deployment Success Screen Toast Notification */}
+      {showSuccessNotification && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#131316] border border-white text-white p-5 rounded shadow-2xl max-w-sm flex flex-col gap-3 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-white text-black flex items-center justify-center font-bold shrink-0">
+              <Check size={12} />
+            </div>
+            <span className="font-mono text-xs uppercase tracking-wider font-bold text-white">Deployment Successful</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-semibold text-primary">{project?.name} is live.</p>
+            <p className="text-xs text-neutral-400 font-light leading-normal">
+              Your application has been built and deployed to production.
+            </p>
+          </div>
+          <div className="flex gap-2 border-t border-[#1E1E22] pt-3 mt-1">
+            <a 
+              href={projectUrl}
+              target="_blank" 
+              rel="noreferrer"
+              className="text-xs font-mono bg-white text-black px-3.5 py-2 rounded hover:opacity-90 transition-all font-semibold"
+            >
+              Visit App
+            </a>
+            <button 
+              onClick={() => setShowSuccessNotification(false)}
+              className="text-xs font-mono text-neutral-400 hover:text-white transition-colors border border-[#1E1E22] px-3.5 py-2 rounded"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }
