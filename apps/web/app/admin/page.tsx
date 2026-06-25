@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Shield, Server, Users, GitBranch, Terminal, RefreshCw, 
   Play, Square, Trash2, Database, HardDrive, Cpu, Loader2, 
-  Check, AlertTriangle, ChevronRight, X
+  Check, AlertTriangle, ChevronRight, X, ExternalLink
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 
@@ -96,6 +96,19 @@ export default function AdminPortal() {
   const [pruningTarget, setPruningTarget] = useState<string | null>(null);
   const [maintenanceOutput, setMaintenanceOutput] = useState<string>('');
   const [maintenanceStatus, setMaintenanceStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+
+  // Dynamic base domain resolver for local vs production routing
+  const [baseDomain, setBaseDomain] = useState('localhost');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      if (host.startsWith('deploy.')) {
+        setBaseDomain(host.replace(/^deploy\./, 'apps.'));
+      } else {
+        setBaseDomain(host);
+      }
+    }
+  }, []);
 
   // Verify Admin Authentication
   useEffect(() => {
@@ -574,12 +587,42 @@ export default function AdminPortal() {
                         {/* Name & Slug */}
                         <td className="p-4">
                           <div className="font-semibold text-white">{project.name}</div>
-                          <div className="text-[10px] text-neutral-500">{project.slug}</div>
+                          <div className="text-[10px] text-neutral-500 flex items-center gap-1.5 mt-0.5">
+                            <span className="text-neutral-600 font-sans">Slug:</span>
+                            <span>{project.slug}</span>
+                            {project.status === 'READY' && project.assignedPort && (
+                              <>
+                                <span className="text-neutral-700">•</span>
+                                <a
+                                  href={`http://${project.slug}.${baseDomain}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-neutral-400 hover:text-white underline decoration-neutral-700 flex items-center gap-0.5"
+                                >
+                                  Visit App <ExternalLink size={10} />
+                                </a>
+                              </>
+                            )}
+                          </div>
                         </td>
-                        {/* Owner Profile */}
-                        <td className="p-4 flex items-center gap-2">
-                          <img src={project.owner.avatarUrl} alt={project.owner.username} className="w-6 h-6 rounded-full object-cover border border-neutral-800" />
-                          <span className="text-neutral-300">{project.owner.username}</span>
+                        {/* Owner Profile & GitHub Repo */}
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <img src={project.owner.avatarUrl} alt={project.owner.username} className="w-5 h-5 rounded-full object-cover border border-neutral-800" />
+                            <span className="text-neutral-300 font-semibold">{project.owner.username}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500 mt-1 flex items-center gap-1">
+                            <GitBranch size={10} className="text-neutral-600" />
+                            <a
+                              href={`https://github.com/${project.githubRepo}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-neutral-400 hover:text-white underline decoration-neutral-700 truncate max-w-[150px]"
+                              title={project.githubRepo}
+                            >
+                              {project.githubRepo}
+                            </a>
+                          </div>
                         </td>
                         {/* Bound Port */}
                         <td className="p-4 text-neutral-400">

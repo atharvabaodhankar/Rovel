@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   GitBranch, Rocket, Globe, History, Check, 
   RefreshCw, Terminal, Loader2, X, Cpu, AlertTriangle, Plus,
-  Search, Link
+  Search, Link, ChevronDown
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 
@@ -61,6 +61,8 @@ export default function ProjectsDirectory() {
   // Directory selection states
   const [repoDirs, setRepoDirs] = useState<{ path: string; label: string; isProject: boolean }[]>([]);
   const [loadingDirs, setLoadingDirs] = useState(false);
+  const [isDirDropdownOpen, setIsDirDropdownOpen] = useState(false);
+  const [isFrameworkDropdownOpen, setIsFrameworkDropdownOpen] = useState(false);
 
   // Helper to parse GitHub repository owner/repo
   const parseGitHubRepo = (val: string): string => {
@@ -649,24 +651,53 @@ export default function ProjectsDirectory() {
                         <span>Scanning repository folders...</span>
                       </div>
                     ) : repoDirs.length > 0 ? (
-                      <div className="flex flex-col gap-2">
-                        <select
-                          value={rootDirectory}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setRootDirectory(val);
-                            detectFrameworkForRepo(parseGitHubRepo(githubRepo), val === '__custom__' ? '' : val);
-                          }}
+                      <div className="relative flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => !submitting && setIsDirDropdownOpen(!isDirDropdownOpen)}
+                          className="bg-black border border-[#1E1E22] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary font-mono flex justify-between items-center w-full text-left cursor-pointer"
                           disabled={submitting}
-                          className="bg-black border border-[#1E1E22] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary font-mono cursor-pointer"
                         >
-                          {repoDirs.map((dir) => (
-                            <option key={dir.path} value={dir.path}>
-                              {dir.label}
-                            </option>
-                          ))}
-                          <option value="__custom__">-- Enter custom path --</option>
-                        </select>
+                          <span className="truncate pr-4">
+                            {repoDirs.find(d => d.path === rootDirectory)?.label || rootDirectory || 'Root Directory (/)'}
+                          </span>
+                          <ChevronDown size={14} className={`text-neutral-500 transition-transform ${isDirDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {isDirDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsDirDropdownOpen(false)} />
+                            <div className="absolute top-[105%] left-0 w-full bg-[#131316] border border-[#1E1E22] rounded shadow-2xl z-50 py-1 max-h-48 overflow-y-auto divide-y divide-[#1E1E22]/30 font-mono text-xs">
+                              {repoDirs.map((dir) => (
+                                <div
+                                  key={dir.path}
+                                  onClick={() => {
+                                    setRootDirectory(dir.path);
+                                    setIsDirDropdownOpen(false);
+                                    detectFrameworkForRepo(parseGitHubRepo(githubRepo), dir.path);
+                                  }}
+                                  className={`px-4 py-2.5 cursor-pointer hover:bg-[#1A1A20] hover:text-white transition-colors flex items-center justify-between ${
+                                    rootDirectory === dir.path ? 'bg-[#1A1A20] text-white font-bold' : 'text-neutral-400'
+                                  }`}
+                                >
+                                  <span className="truncate">{dir.label}</span>
+                                  {rootDirectory === dir.path && <Check size={12} className="text-white" />}
+                                </div>
+                              ))}
+                              <div
+                                onClick={() => {
+                                  setRootDirectory('__custom__');
+                                  setIsDirDropdownOpen(false);
+                                }}
+                                className={`px-4 py-2.5 cursor-pointer hover:bg-[#1A1A20] hover:text-white transition-colors flex items-center justify-between ${
+                                  rootDirectory === '__custom__' ? 'bg-[#1A1A20] text-white font-bold' : 'text-neutral-400'
+                                }`}
+                              >
+                                <span>-- Enter custom path --</span>
+                                {rootDirectory === '__custom__' && <Check size={12} className="text-white" />}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -693,21 +724,47 @@ export default function ProjectsDirectory() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2">
+              {/* Custom Build Framework Dropdown */}
+              <div className="relative flex flex-col gap-2">
                 <label className="text-xs font-mono uppercase tracking-wider text-neutral-400">
                   Build Framework
                 </label>
-                <select
-                  value={framework}
-                  onChange={(e) => setFramework(e.target.value)}
+                <button
+                  type="button"
+                  onClick={() => !submitting && setIsFrameworkDropdownOpen(!isFrameworkDropdownOpen)}
+                  className="bg-black border border-[#1E1E22] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary font-mono flex justify-between items-center w-full text-left cursor-pointer"
                   disabled={submitting}
-                  className="bg-black border border-[#1E1E22] rounded px-4 py-3 text-sm focus:border-neutral-700 focus:outline-none transition-colors disabled:opacity-50 text-primary"
                 >
-                  <option value="react-vite">React (Vite)</option>
-                  <option value="static">Static (Vanilla)</option>
-                  <option value="nextjs">Next.js</option>
-                  <option value="express">Express.js</option>
-                </select>
+                  <span>{getFrameworkLabel(framework)}</span>
+                  <ChevronDown size={14} className={`text-neutral-500 transition-transform ${isFrameworkDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isFrameworkDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsFrameworkDropdownOpen(false)} />
+                    <div className="absolute top-[105%] left-0 w-full bg-[#131316] border border-[#1E1E22] rounded shadow-2xl z-50 py-1 divide-y divide-[#1E1E22]/30 font-mono text-xs">
+                      {[
+                        { value: 'react-vite', label: 'React (Vite)' },
+                        { value: 'static', label: 'Static (Vanilla)' },
+                        { value: 'nextjs', label: 'Next.js' },
+                        { value: 'express', label: 'Express.js' },
+                      ].map((opt) => (
+                        <div
+                          key={opt.value}
+                          onClick={() => {
+                            setFramework(opt.value);
+                            setIsFrameworkDropdownOpen(false);
+                          }}
+                          className={`px-4 py-2.5 cursor-pointer hover:bg-[#1A1A20] hover:text-white transition-colors flex items-center justify-between ${
+                            framework === opt.value ? 'bg-[#1A1A20] text-white font-bold' : 'text-neutral-400'
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {framework === opt.value && <Check size={12} className="text-white" />}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 mt-4 border-t border-[#1E1E22] pt-4">
