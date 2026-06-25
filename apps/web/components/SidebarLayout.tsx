@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, GitBranch, Rocket, Globe, Sliders, History, 
-  Settings, LogOut, Bell, HelpCircle, Search 
+  Settings, LogOut, Bell, HelpCircle, Search, Shield
 } from 'lucide-react';
 
 interface UserSession {
@@ -16,7 +16,7 @@ interface UserSession {
 
 interface SidebarLayoutProps {
   user: UserSession | null;
-  activeLink: 'dashboard' | 'projects' | 'deployments' | 'domains' | 'config' | 'activity' | 'settings';
+  activeLink: 'dashboard' | 'projects' | 'deployments' | 'domains' | 'config' | 'activity' | 'settings' | 'admin';
   breadcrumbs?: React.ReactNode;
   searchBar?: React.ReactNode;
   children: React.ReactNode;
@@ -133,6 +133,20 @@ export default function SidebarLayout({
             <Settings size={18} className={activeLink === 'settings' ? 'text-primary' : 'text-neutral-400'} />
             Settings
           </a>
+
+          {user && user.username.toLowerCase() === 'atharvabaodhankar' && (
+            <a 
+              onClick={() => router.push('/admin')}
+              className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-200 cursor-pointer active:scale-95 text-sm ${
+                activeLink === 'admin'
+                  ? 'bg-surface-container-high text-primary font-bold border-r-2 border-primary'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+              }`}
+            >
+              <Shield size={18} className={activeLink === 'admin' ? 'text-primary' : 'text-neutral-400'} />
+              Admin Portal
+            </a>
+          )}
         </div>
         
         {/* User Session Profile & Log Out */}

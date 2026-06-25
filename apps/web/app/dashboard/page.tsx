@@ -294,7 +294,11 @@ export default function Dashboard() {
       }
 
       const data = await res.json();
-      setProjects([data.project, ...projects]);
+      const newProject = {
+        ...data.project,
+        deployments: data.deployment ? [data.deployment] : [],
+      };
+      setProjects([newProject, ...projects]);
       setIsModalOpen(false);
       
       // Reset form
@@ -412,14 +416,14 @@ export default function Dashboard() {
   // Dynamic Metrics Calculations
   const metrics = {
     projects: projects.length,
-    deployments: projects.reduce((acc, p) => acc + p.deployments.length, 0),
+    deployments: projects.reduce((acc, p) => acc + (p.deployments?.length || 0), 0),
     containers: projects.filter((p) => p.status === 'READY').length,
     domains: projects.filter((p) => p.status === 'READY').length,
   };
 
   // Generate dynamic activity items based on latest deployments
   const activityItems = projects
-    .filter((p) => p.deployments.length > 0)
+    .filter((p) => p.deployments && p.deployments.length > 0)
     .map((p) => ({
       projectId: p.id,
       projectName: p.name,

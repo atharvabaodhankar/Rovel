@@ -233,7 +233,11 @@ export default function ProjectsDirectory() {
       }
 
       const data = await res.json();
-      setProjects([data.project, ...projects]);
+      const newProject = {
+        ...data.project,
+        deployments: data.deployment ? [data.deployment] : [],
+      };
+      setProjects([newProject, ...projects]);
       setIsModalOpen(false);
       
       setName('');
