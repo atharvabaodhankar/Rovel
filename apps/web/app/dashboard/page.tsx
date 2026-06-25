@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   GitBranch, Rocket, Globe, History, Check, 
   RefreshCw, Terminal, Loader2, X, Cpu, AlertTriangle, Plus,
-  Search, Link, ChevronDown
+  Search, Link, ChevronDown, HardDrive, Database
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 
@@ -41,7 +41,7 @@ export default function Dashboard() {
   
   // Real Host System Stats State
   const [systemStats, setSystemStats] = useState({ cpu: 0, memory: 0, disk: 0 });
-  const [cpuHistory, setCpuHistory] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [cpuHistory, setCpuHistory] = useState<number[]>(Array(30).fill(0));
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -231,7 +231,7 @@ export default function Dashboard() {
         if (res.ok) {
           const data = await res.json();
           setSystemStats(data.stats);
-          setCpuHistory((prev) => [...prev.slice(1), data.stats.cpu]);
+          setCpuHistory((prev) => [...prev.slice(-29), data.stats.cpu]);
         }
       } catch (err) {
         console.error('Failed to fetch system stats:', err);
@@ -399,9 +399,9 @@ export default function Dashboard() {
   // Generate dynamic path for CPU sparkline (real-time CPU history)
   const generateSparkline = () => {
     const points = cpuHistory.map((val, index) => {
-      const x = index * (100 / 9);
-      // Map val (0-100) to y (10-90) to leave breathing room
-      const y = 90 - (val / 100) * 80;
+      const x = index * (100 / (cpuHistory.length - 1));
+      // Map val (0-100) to y (15-85) to leave vertical breathing room
+      const y = 85 - (val / 100) * 70;
       return { x, y };
     });
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
@@ -537,44 +537,60 @@ export default function Dashboard() {
               </span>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {/* CPU */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <span className="font-metadata text-neutral-500 uppercase text-xs">CPU Usage</span>
-                  <span className="font-code-md text-primary text-xs font-mono">{systemStats.cpu}%</span>
+            {/* Beautiful, High-Fidelity Metrics Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* CPU Card */}
+              <div className="bg-[#0A0A0C] border border-[#161619] rounded-xl p-4 flex flex-col gap-3 hover:border-purple-900/30 hover:scale-[1.01] hover:shadow-[0_8px_30px_rgb(0,0,0,0.6)] transition-all duration-300 select-none group">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-purple-950/20 border border-purple-900/20 group-hover:bg-purple-950/30 group-hover:border-purple-900/40 transition-colors">
+                      <Cpu size={14} className="text-purple-400" />
+                    </div>
+                    <span className="font-metadata text-neutral-400 uppercase text-xs tracking-wider font-mono">CPU Usage</span>
+                  </div>
+                  <span className="text-sm font-mono font-bold text-purple-400 bg-purple-950/10 border border-purple-900/20 px-1.5 py-0.5 rounded">{systemStats.cpu}%</span>
                 </div>
-                <div className="h-1 w-full bg-[#1A1A1A] rounded overflow-hidden">
+                <div className="h-2 w-full bg-[#121214] rounded-full overflow-hidden border border-neutral-900/30">
                   <div 
-                    className="h-full bg-white transition-all duration-500" 
+                    className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]" 
                     style={{ width: `${systemStats.cpu}%` }}
                   ></div>
                 </div>
               </div>
               
-              {/* Memory */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <span className="font-metadata text-neutral-500 uppercase text-xs">Memory</span>
-                  <span className="font-code-md text-primary text-xs font-mono">{systemStats.memory}%</span>
+              {/* Memory Card */}
+              <div className="bg-[#0A0A0C] border border-[#161619] rounded-xl p-4 flex flex-col gap-3 hover:border-blue-900/30 hover:scale-[1.01] hover:shadow-[0_8px_30px_rgb(0,0,0,0.6)] transition-all duration-300 select-none group">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-blue-950/20 border border-blue-900/20 group-hover:bg-blue-950/30 group-hover:border-blue-900/40 transition-colors">
+                      <HardDrive size={14} className="text-blue-400" />
+                    </div>
+                    <span className="font-metadata text-neutral-400 uppercase text-xs tracking-wider font-mono">Memory</span>
+                  </div>
+                  <span className="text-sm font-mono font-bold text-blue-400 bg-blue-950/10 border border-blue-900/20 px-1.5 py-0.5 rounded">{systemStats.memory}%</span>
                 </div>
-                <div className="h-1 w-full bg-[#1A1A1A] rounded overflow-hidden">
+                <div className="h-2 w-full bg-[#121214] rounded-full overflow-hidden border border-neutral-900/30">
                   <div 
-                    className="h-full bg-white transition-all duration-500" 
+                    className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]" 
                     style={{ width: `${systemStats.memory}%` }}
                   ></div>
                 </div>
               </div>
               
-              {/* Disk */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <span className="font-metadata text-neutral-500 uppercase text-xs">Disk Space</span>
-                  <span className="font-code-md text-primary text-xs font-mono">{systemStats.disk}%</span>
+              {/* Disk Card */}
+              <div className="bg-[#0A0A0C] border border-[#161619] rounded-xl p-4 flex flex-col gap-3 hover:border-emerald-900/30 hover:scale-[1.01] hover:shadow-[0_8px_30px_rgb(0,0,0,0.6)] transition-all duration-300 select-none group">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-950/20 border border-emerald-900/20 group-hover:bg-emerald-950/30 group-hover:border-emerald-900/40 transition-colors">
+                      <Database size={14} className="text-emerald-400" />
+                    </div>
+                    <span className="font-metadata text-neutral-400 uppercase text-xs tracking-wider font-mono">Disk Space</span>
+                  </div>
+                  <span className="text-sm font-mono font-bold text-emerald-400 bg-emerald-950/10 border border-emerald-900/20 px-1.5 py-0.5 rounded">{systemStats.disk}%</span>
                 </div>
-                <div className="h-1 w-full bg-[#1A1A1A] rounded overflow-hidden">
+                <div className="h-2 w-full bg-[#121214] rounded-full overflow-hidden border border-neutral-900/30">
                   <div 
-                    className="h-full bg-white transition-all duration-500" 
+                    className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" 
                     style={{ width: `${systemStats.disk}%` }}
                   ></div>
                 </div>
@@ -582,17 +598,38 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Dynamic SVG Graph (Real-time moving CPU sparkline) */}
-          <div className="flex-grow bg-[#050505] border border-layout rounded relative overflow-hidden min-h-[160px] flex items-end p-2 opacity-80 mt-2">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:2rem_2rem] [mask-image:linear-gradient(to_bottom,transparent,black)]"></div>
+          {/* Dynamic SVG Graph (Glow Neon Telemetry Waveform) */}
+          <div className="flex-grow bg-[#050507] border border-[#121214] rounded-xl relative overflow-hidden min-h-[180px] flex items-end p-2 mt-2 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)]">
+            {/* High-tech matrix dot grid overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#141416_1px,transparent_1px),linear-gradient(to_bottom,#141416_1px,transparent_1px)] bg-[size:1.5rem_1.5rem] [mask-image:radial-gradient(ellipse_at_center,black_70%,transparent_100%)]"></div>
             
             <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+              <defs>
+                {/* Neon Sparkline Gradient */}
+                <linearGradient id="sparkline-grad" x1="0%" x2="100%" y1="0%" y2="0%">
+                  <stop offset="0%" style={{ stopColor: '#8B5CF6' }}></stop>
+                  <stop offset="50%" style={{ stopColor: '#D946EF' }}></stop>
+                  <stop offset="100%" style={{ stopColor: '#06B6D4' }}></stop>
+                </linearGradient>
+                {/* Rich fading area gradient */}
+                <linearGradient id="fill-grad" x1="0%" x2="0%" y1="0%" y2="100%">
+                  <stop offset="0%" style={{ stopColor: '#D946EF', stopOpacity: 0.18 }}></stop>
+                  <stop offset="100%" style={{ stopColor: '#8B5CF6', stopOpacity: 0 }}></stop>
+                </linearGradient>
+                {/* SVG Glow Filter */}
+                <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="1.2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               {/* Filled Area */}
               {cpuHistory.some(v => v > 0) && (
                 <path 
                   d={fillPath} 
-                  fill="url(#grad1)" 
-                  opacity="0.05"
+                  fill="url(#fill-grad)" 
                   className="transition-all duration-500"
                 ></path>
               )}
@@ -600,21 +637,17 @@ export default function Dashboard() {
               <path 
                 d={linePath} 
                 fill="none" 
-                stroke="#FFFFFF" 
-                strokeWidth="0.75" 
+                stroke="url(#sparkline-grad)" 
+                strokeWidth="1.25" 
+                filter="url(#glow-filter)"
                 vectorEffect="non-scaling-stroke"
                 className="transition-all duration-500"
               ></path>
-              <defs>
-                <linearGradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
-                  <stop offset="0%" style={{ stopColor: '#FFFFFF', stopOpacity: 1 }}></stop>
-                  <stop offset="100%" style={{ stopColor: '#FFFFFF', stopOpacity: 0 }}></stop>
-                </linearGradient>
-              </defs>
             </svg>
             
-            <div className="absolute bottom-2 right-2 font-mono text-[10px] text-neutral-600 select-none">
-              LIVE RESOURCE EXHAUSTION GRAPH
+            <div className="absolute bottom-3 right-4 flex items-center gap-2 font-mono text-[9px] text-neutral-500 tracking-wider select-none bg-black/40 border border-neutral-900/40 px-2 py-1 rounded backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10B981]"></span>
+              LIVE TELEMETRY WAVEFORM // CPU TIME SERIES
             </div>
           </div>
         </div>

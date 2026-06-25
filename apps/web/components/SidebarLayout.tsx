@@ -44,7 +44,6 @@ export default function SidebarLayout({
           <img src="/logo.png" alt="Rovel Logo" className="w-8 h-8 rounded object-cover" />
           <div>
             <div className="font-display text-primary uppercase tracking-tighter text-xl font-bold">Rovel</div>
-            <div className="font-metadata text-neutral-500 text-xs font-mono">v2.4.0</div>
           </div>
         </div>
         
