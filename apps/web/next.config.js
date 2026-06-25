@@ -6,8 +6,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Add any standard Next.js configurations here if needed in the future
   reactStrictMode: true,
+  serverExternalPackages: ['bullmq', 'ioredis'],
 };
 
 module.exports = nextConfig;
