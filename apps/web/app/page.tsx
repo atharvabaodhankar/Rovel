@@ -44,13 +44,13 @@ export default function LandingPage() {
         </nav>
         <div className="flex items-center gap-4">
           <a 
-            href="/api/auth/login"
+            href="https://console.rovel.dev/api/auth/login"
             className="text-xs font-mono text-neutral-400 hover:text-white transition-all"
           >
             Sign In
           </a>
           <a 
-            href="/api/auth/login"
+            href="https://console.rovel.dev/api/auth/login"
             className="bg-white text-black px-4 py-1.5 rounded font-mono font-bold text-xs hover:bg-neutral-200 active:scale-95 transition-all"
           >
             Get Started
@@ -84,7 +84,7 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 w-full sm:w-auto">
               <a 
-                href="/api/auth/login"
+                href="https://console.rovel.dev/api/auth/login"
                 className="w-full sm:w-auto flex items-center justify-center gap-3 bg-white text-black px-8 py-3.5 rounded font-mono font-bold text-sm hover:bg-neutral-200 transition-colors active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.05)]"
               >
                 <Terminal size={16} />
@@ -220,7 +220,7 @@ export default function LandingPage() {
             <p className="text-neutral-400 text-sm max-w-lg leading-relaxed font-light">Join thousands of developers deploying infrastructure with absolute precision and zero overhead.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4 w-full sm:w-auto">
               <a 
-                href="/api/auth/login"
+                href="https://console.rovel.dev/api/auth/login"
                 className="px-8 py-3.5 bg-white text-black font-mono font-bold rounded text-sm hover:bg-neutral-200 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.08)]"
               >
                 Get Started for Free
