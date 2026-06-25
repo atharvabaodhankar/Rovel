@@ -13,7 +13,7 @@ This guide provides a comprehensive, step-by-step walkthrough to set up and depl
 
 ### 2. Domain & DNS Configuration
 Go to your DNS provider (e.g. DigitalOcean, Cloudflare) and create two `A` records pointing to your VPS IP:
-* `deploy.rovel.yourdomain.com` ──► `YOUR_VPS_IP` (Dashboard console)
+* `console.rovel.dev` ──► `YOUR_VPS_IP` (Dashboard console)
 * `*.apps.rovel.yourdomain.com` ──► `YOUR_VPS_IP` (Wildcard for deployed user applications)
 
 ---
@@ -106,7 +106,7 @@ BASE_DOMAIN="apps.rovel.yourdomain.com"
 NEXT_PUBLIC_BASE_DOMAIN="apps.rovel.yourdomain.com"
 
 # GitHub OAuth App Configuration
-# Create a GitHub OAuth App pointing to https://deploy.rovel.yourdomain.com
+# Create a GitHub OAuth App pointing to https://console.rovel.dev
 GITHUB_CLIENT_ID="YOUR_GITHUB_CLIENT_ID"
 GITHUB_CLIENT_SECRET="YOUR_GITHUB_CLIENT_SECRET"
 
@@ -170,7 +170,7 @@ sudo systemctl reload nginx
 Install Certbot and request a certificate for the main dashboard subdomain:
 ```bash
 sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d deploy.rovel.yourdomain.com
+sudo certbot --nginx -d console.rovel.dev
 ```
 *(Certbot will automatically edit your Nginx files to handle HTTPS and redirect all HTTP traffic to port 443).*
 
