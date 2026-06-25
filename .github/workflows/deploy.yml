@@ -18,4 +18,5 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             cd ~/Rovel
+            git reset --hard HEAD
             ./update.sh

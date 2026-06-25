@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# CodeShip VPS Bootstrap Setup Script
+# Rovel VPS Bootstrap Setup Script
 # Recommended OS: Ubuntu 24.04 LTS
 
 set -e
 
 echo "===================================================="
-echo "Starting CodeShip VPS Bootstrap Setup..."
+echo "Starting Rovel VPS Bootstrap Setup..."
 echo "===================================================="
 
 # 1. Update package manager
