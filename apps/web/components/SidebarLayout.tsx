@@ -75,7 +75,7 @@ export default function SidebarLayout({
           </a>
           
           <a 
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/deployments')}
             className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-200 cursor-pointer active:scale-95 text-sm ${
               activeLink === 'deployments'
                 ? 'bg-surface-container-high text-primary font-bold border-r-2 border-primary'
@@ -87,48 +87,48 @@ export default function SidebarLayout({
           </a>
           
           <a 
+            onClick={() => router.push('/domains')}
             className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-200 cursor-pointer active:scale-95 text-sm ${
               activeLink === 'domains'
                 ? 'bg-surface-container-high text-primary font-bold border-r-2 border-primary'
                 : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
             }`}
-            href="#"
           >
             <Globe size={18} className={activeLink === 'domains' ? 'text-primary' : 'text-neutral-400'} />
             Domains
           </a>
           
           <a 
+            onClick={() => router.push('/config')}
             className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-200 cursor-pointer active:scale-95 text-sm ${
               activeLink === 'config'
                 ? 'bg-surface-container-high text-primary font-bold border-r-2 border-primary'
                 : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
             }`}
-            href="#"
           >
             <Sliders size={18} className={activeLink === 'config' ? 'text-primary' : 'text-neutral-400'} />
             Config
           </a>
           
           <a 
+            onClick={() => router.push('/activity')}
             className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-200 cursor-pointer active:scale-95 text-sm ${
               activeLink === 'activity'
                 ? 'bg-surface-container-high text-primary font-bold border-r-2 border-primary'
                 : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
             }`}
-            href="#"
           >
             <History size={18} className={activeLink === 'activity' ? 'text-primary' : 'text-neutral-400'} />
             Activity
           </a>
           
           <a 
+            onClick={() => router.push('/settings')}
             className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-200 cursor-pointer active:scale-95 text-sm ${
               activeLink === 'settings'
                 ? 'bg-surface-container-high text-primary font-bold border-r-2 border-primary'
                 : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
             }`}
-            href="#"
           >
             <Settings size={18} className={activeLink === 'settings' ? 'text-primary' : 'text-neutral-400'} />
             Settings
