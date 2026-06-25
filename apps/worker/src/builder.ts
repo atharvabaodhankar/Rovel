@@ -342,7 +342,9 @@ CMD ["npm", "start"]
     // Inject decrypted environment variables
     for (const envVar of project.envVars) {
       const decryptedValue = decrypt(envVar.value);
-      dockerArgs.push('-e', `${envVar.key}=${decryptedValue}`);
+      // Wrap value in double quotes and escape any existing double quotes to ensure safe shell execution (especially on Windows)
+      const escapedValue = decryptedValue.replace(/"/g, '\\"');
+      dockerArgs.push('-e', `${envVar.key}="${escapedValue}"`);
     }
 
     // Always inject PORT internally
