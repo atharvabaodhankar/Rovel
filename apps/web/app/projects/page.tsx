@@ -354,14 +354,14 @@ export default function ProjectsDirectory() {
       searchBar={searchBarElement}
     >
       {/* Title & Actions */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-end">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-extrabold text-primary mb-1 tracking-tight">Projects</h1>
           <p className="font-body-md text-body-md text-neutral-500 text-sm font-light">Directory of all connected repositories and build frameworks.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-white text-black font-semibold text-body-sm px-4 py-2 rounded hover:opacity-90 transition-all flex items-center gap-2"
+          className="bg-white text-black font-semibold text-body-sm px-4 py-2 rounded hover:opacity-90 transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           <Plus size={16} /> New Project
         </button>
@@ -438,8 +438,8 @@ export default function ProjectsDirectory() {
 
       {/* Copy-pasted Modal for self-containment */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-6 z-50 animate-fade-in">
-          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-xl p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 sm:p-6 z-50 animate-fade-in">
+          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-xl p-5 sm:p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsModalOpen(false)}
               disabled={submitting}

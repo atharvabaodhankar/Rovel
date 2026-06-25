@@ -177,7 +177,7 @@ export default function SidebarLayout({
       <div className="md:ml-sidebar-width min-h-screen flex flex-col w-full flex-1 transition-all duration-150">
         
         {/* Top Header Bar */}
-        <header className="h-16 px-page-padding flex justify-between items-center border-b border-layout bg-[#070708]/85 backdrop-blur-sm z-30 sticky top-0 w-full">
+        <header className="h-16 px-4 md:px-page-padding flex justify-between items-center border-b border-layout bg-[#070708]/85 backdrop-blur-sm z-30 sticky top-0 w-full">
           {/* Breadcrumbs or Title */}
           <div className="font-headline-lg text-headline-lg font-bold text-primary flex items-center gap-3">
             <button 
@@ -218,7 +218,7 @@ export default function SidebarLayout({
         </header>
 
         {/* Dynamic Page Canvas */}
-        <main className="flex-grow overflow-y-auto p-6 bg-[#0C0C0E] w-full flex flex-col gap-6">
+        <main className="flex-grow overflow-y-auto p-4 sm:p-6 bg-[#0C0C0E] w-full flex flex-col gap-6">
           {children}
         </main>
       </div>

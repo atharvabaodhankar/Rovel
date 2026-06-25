@@ -655,7 +655,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Tab Selection */}
-      <div className="border-b border-layout flex gap-6 overflow-x-auto">
+      <div className="border-b border-layout flex gap-6 overflow-x-auto whitespace-nowrap scrollbar-none">
         {(['deployments', 'history', 'env', 'settings'] as const).map((tab) => (
           <button
             key={tab}
@@ -722,7 +722,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     <h3 className="font-headline-md text-primary uppercase text-xs tracking-wider text-neutral-500 font-mono">
                       Deployment Metadata
                     </h3>
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-2">
                       <div className="flex flex-col gap-1">
                         <span className="font-metadata text-neutral-500 uppercase text-[10px] font-mono">Project</span>
                         <span className="font-body-sm text-primary text-sm font-medium">{project.name}</span>
@@ -814,7 +814,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 {/* Right Column: Terminal Logs */}
                 <div className="lg:col-span-2 flex flex-col">
                   <div className={`bg-black border border-layout rounded-lg flex flex-col overflow-hidden transition-all duration-300 ${
-                    isTerminalExpanded ? 'h-[800px]' : 'h-[600px]'
+                    isTerminalExpanded ? 'h-[500px] sm:h-[800px]' : 'h-[350px] sm:h-[600px]'
                   }`}>
                     {/* Terminal Header */}
                     <div className="flex items-center justify-between px-4 py-2.5 border-b border-layout bg-[#0B0B0B]">
@@ -852,7 +852,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     
                     {/* Terminal Body */}
                     <div className="flex-1 p-5 overflow-y-auto font-mono text-[12px] leading-relaxed flex flex-col bg-black text-neutral-300 select-text selection:bg-neutral-850">
-                      <div className="white-space-pre-wrap break-all flex-1 select-text space-y-1">
+                      <div className="whitespace-pre-wrap break-all flex-1 select-text space-y-1">
                         {formatLogs(activeDeployment.logs)}
                       </div>
                       
@@ -974,36 +974,38 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             )}
 
             <form onSubmit={saveEnvVariables} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4 sm:gap-3">
                 {envVars.map((ev, index) => (
-                  <div key={index} className="flex items-center gap-3">
+                  <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-b border-layout/40 pb-4 sm:border-b-0 sm:pb-0">
                     <input
                       type="text"
                       placeholder="KEY"
                       value={ev.key}
                       onChange={(e) => handleEnvChange(index, 'key', e.target.value)}
                       disabled={savingEnv}
-                      className="flex-1 bg-black border border-layout rounded px-4 py-2.5 text-sm focus:border-neutral-500 focus:outline-none transition-colors font-mono uppercase text-primary placeholder:text-neutral-700 placeholder:text-xs text-sm"
+                      className="flex-grow sm:flex-1 bg-black border border-layout rounded px-4 py-2.5 text-sm focus:border-neutral-500 focus:outline-none transition-colors font-mono uppercase text-primary placeholder:text-neutral-700 placeholder:text-xs text-sm"
                       required={!!ev.value}
                     />
-                    <input
-                      type="text"
-                      placeholder="VALUE"
-                      value={ev.value}
-                      onChange={(e) => handleEnvChange(index, 'value', e.target.value)}
-                      disabled={savingEnv}
-                      className="flex-1 bg-black border border-layout rounded px-4 py-2.5 text-sm focus:border-neutral-500 focus:outline-none transition-colors font-mono text-primary placeholder:text-neutral-700 placeholder:text-xs text-sm"
-                      required={!!ev.key}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeEnvVarField(index)}
-                      disabled={savingEnv}
-                      className="p-2.5 border border-layout hover:border-neutral-500 hover:text-white rounded transition-colors text-neutral-500"
-                      title="Remove variable"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div className="flex gap-2 flex-grow sm:flex-1">
+                      <input
+                        type="text"
+                        placeholder="VALUE"
+                        value={ev.value}
+                        onChange={(e) => handleEnvChange(index, 'value', e.target.value)}
+                        disabled={savingEnv}
+                        className="flex-grow bg-black border border-layout rounded px-4 py-2.5 text-sm focus:border-neutral-500 focus:outline-none transition-colors font-mono text-primary placeholder:text-neutral-700 placeholder:text-xs text-sm"
+                        required={!!ev.key}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeEnvVarField(index)}
+                        disabled={savingEnv}
+                        className="p-2.5 border border-layout hover:border-neutral-500 hover:text-white rounded transition-colors text-neutral-500 shrink-0"
+                        title="Remove variable"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

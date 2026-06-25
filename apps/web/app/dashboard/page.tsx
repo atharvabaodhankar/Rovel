@@ -462,14 +462,14 @@ export default function Dashboard() {
     >
       
       {/* Title & Actions Row */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-end">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-extrabold text-primary mb-1 tracking-tight">Rovel Dashboard</h1>
           <p className="font-body-md text-body-md text-neutral-500 text-sm font-light">Overview of your infrastructure and active deployments.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-primary text-black bg-white font-semibold text-body-sm px-4 py-2 rounded hover:opacity-90 transition-opacity flex items-center gap-2"
+          className="bg-primary text-black bg-white font-semibold text-body-sm px-4 py-2 rounded hover:opacity-90 transition-opacity flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           <Plus size={16} /> New Project
         </button>
@@ -770,8 +770,8 @@ export default function Dashboard() {
 
       {/* Create Project Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-6 z-50 animate-fade-in">
-          <div className="bg-[#0B0B0B] border border-[#1A1A1A] w-full max-w-xl p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 sm:p-6 z-50 animate-fade-in">
+          <div className="bg-[#0B0B0B] border border-[#1A1A1A] w-full max-w-xl p-5 sm:p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsModalOpen(false)}
               disabled={submitting}

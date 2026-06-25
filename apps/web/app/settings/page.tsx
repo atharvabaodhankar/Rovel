@@ -293,8 +293,8 @@ export default function GlobalSettings() {
 
     {/* Documentation Overlay Modal */}
       {isDocOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-6 z-50 animate-fade-in">
-          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-2xl p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 sm:p-6 z-50 animate-fade-in">
+          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-2xl p-5 sm:p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[85vh] overflow-y-auto">
             <button 
               onClick={() => setIsDocOpen(false)}
               className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
@@ -365,8 +365,8 @@ export default function GlobalSettings() {
 
       {/* Support Ticket Modal */}
       {isSupportOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-6 z-50 animate-fade-in">
-          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-lg p-8 rounded shadow-2xl relative flex flex-col gap-6">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 sm:p-6 z-50 animate-fade-in">
+          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-lg p-5 sm:p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsSupportOpen(false)}
               className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
@@ -461,8 +461,8 @@ export default function GlobalSettings() {
 
       {/* System Security Modal */}
       {isSecurityOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-6 z-50 animate-fade-in">
-          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-lg p-8 rounded shadow-2xl relative flex flex-col gap-6">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 sm:p-6 z-50 animate-fade-in">
+          <div className="bg-[#131316] border border-[#1E1E22] w-full max-w-lg p-5 sm:p-8 rounded shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsSecurityOpen(false)}
               className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"

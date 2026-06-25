@@ -291,11 +291,11 @@ export default function AdminPortal() {
 
   return (
     <SidebarLayout user={user} activeLink="admin" breadcrumbs="Admin Portal">
-      {/* Title Header */}
-      <div className="flex justify-between items-end">
+      {/* Title & Description */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-end border-b border-[#1E1E22] pb-6">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-extrabold text-primary mb-1 tracking-tight flex items-center gap-3">
-            <Shield className="text-white" size={28} /> Privileged Admin Portal
+          <h1 className="font-display text-2xl md:text-3xl font-extrabold text-primary mb-1 tracking-tight flex items-center gap-2.5">
+            <Shield className="text-neutral-400 animate-pulse" size={24} /> Admin Control Plane
           </h1>
           <p className="font-body-md text-neutral-500 text-sm font-light">
             Platform control tower restricted to host administrator <span className="text-white font-mono font-bold">atharvabaodhankar</span>.
@@ -307,7 +307,7 @@ export default function AdminPortal() {
             else if (activeTab === 'users') fetchUsers();
             else if (activeTab === 'projects') fetchProjects();
           }}
-          className="border border-[#1E1E22] hover:border-neutral-500 px-3 py-1.5 rounded transition-all bg-[#131316] text-xs font-mono flex items-center gap-1.5"
+          className="border border-[#1E1E22] hover:border-neutral-500 px-3 py-1.5 rounded transition-all bg-[#131316] text-xs font-mono flex items-center gap-1.5 w-full sm:w-auto justify-center"
         >
           <RefreshCw size={12} className={(loadingStats || loadingUsers || loadingProjects) ? 'animate-spin' : ''} /> Refresh
         </button>
@@ -326,7 +326,7 @@ export default function AdminPortal() {
       )}
 
       {/* Admin Tabs Bar */}
-      <div className="flex border-b border-[#1E1E22] gap-6">
+      <div className="flex border-b border-[#1E1E22] gap-6 overflow-x-auto whitespace-nowrap scrollbar-none">
         {(['overview', 'users', 'projects', 'maintenance'] as const).map((tab) => (
           <button
             key={tab}
