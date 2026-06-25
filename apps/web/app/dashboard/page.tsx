@@ -373,6 +373,11 @@ export default function Dashboard() {
         return 'Static (Vanilla)';
       case 'nextjs': return 'Next.js';
       case 'express': return 'Express.js';
+      case 'nuxt': return 'Nuxt';
+      case 'sveltekit': return 'SvelteKit';
+      case 'astro': return 'Astro';
+      case 'python': return 'Python (FastAPI/Flask)';
+      case 'go': return 'Go';
       default: return fw;
     }
   };
@@ -1055,6 +1060,11 @@ export default function Dashboard() {
                         { value: 'static', label: 'Static (Vanilla)' },
                         { value: 'nextjs', label: 'Next.js' },
                         { value: 'express', label: 'Express.js' },
+                        { value: 'nuxt', label: 'Nuxt' },
+                        { value: 'sveltekit', label: 'SvelteKit' },
+                        { value: 'astro', label: 'Astro' },
+                        { value: 'python', label: 'Python (FastAPI/Flask)' },
+                        { value: 'go', label: 'Go' },
                       ].map((opt) => (
                         <div
                           key={opt.value}

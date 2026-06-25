@@ -173,6 +173,9 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
 
     const packageJsonPath = path.join(appRootPath, 'package.json');
     const indexHtmlPath = path.join(appRootPath, 'index.html');
+    const goModPath = path.join(appRootPath, 'go.mod');
+    const reqTxtPath = path.join(appRootPath, 'requirements.txt');
+    const pyprojectPath = path.join(appRootPath, 'pyproject.toml');
     
     let packageJsonExists = false;
     try {
@@ -186,6 +189,24 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
       indexHtmlExists = true;
     } catch {}
 
+    let goModExists = false;
+    try {
+      await fs.promises.access(goModPath);
+      goModExists = true;
+    } catch {}
+
+    let reqTxtExists = false;
+    try {
+      await fs.promises.access(reqTxtPath);
+      reqTxtExists = true;
+    } catch {}
+
+    let pyprojectExists = false;
+    try {
+      await fs.promises.access(pyprojectPath);
+      pyprojectExists = true;
+    } catch {}
+
     let framework = '';
     let internalPort = 3000;
 
@@ -197,6 +218,15 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
       if (deps.next) {
         framework = 'nextjs';
         internalPort = 3000;
+      } else if (deps.nuxt) {
+        framework = 'nuxt';
+        internalPort = 3000;
+      } else if (deps['@sveltejs/kit'] || deps.svelte) {
+        framework = 'sveltekit';
+        internalPort = 3000;
+      } else if (deps.astro) {
+        framework = 'astro';
+        internalPort = 80; // Static Nginx serve by default
       } else if ((deps.react || deps['react-dom']) && deps.vite) {
         framework = 'react-vite';
         internalPort = 80; // React app served via Nginx in container
@@ -206,15 +236,36 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
       }
     }
 
-    // Fallback: If no node framework detected but index.html exists, it's a vanilla static site
-    if (!framework && indexHtmlExists) {
-      framework = 'static';
-      internalPort = 80; // Static served via Nginx on port 80
+    if (!framework) {
+      if (goModExists) {
+        framework = 'go';
+        internalPort = 8080;
+      } else if (reqTxtExists || pyprojectExists) {
+        framework = 'python';
+        internalPort = 8000;
+      } else if (indexHtmlExists) {
+        framework = 'static';
+        internalPort = 80;
+      }
+    }
+
+    // Fallback: If auto-detection yields nothing but the project has a manually set framework, use it
+    if (!framework && project.framework) {
+      framework = project.framework;
+      if (framework === 'react-vite' || framework === 'static' || framework === 'astro') {
+        internalPort = 80;
+      } else if (framework === 'nextjs' || framework === 'express' || framework === 'nuxt' || framework === 'sveltekit') {
+        internalPort = 3000;
+      } else if (framework === 'python') {
+        internalPort = 8000;
+      } else if (framework === 'go') {
+        internalPort = 8080;
+      }
     }
 
     if (!framework) {
       throw new Error(
-        'Unsupported framework. Rovel supports Next.js, React (Vite), Express.js, or vanilla static sites (index.html at root).'
+        'Unsupported framework. Rovel supports Next.js, Nuxt, SvelteKit, Astro, React (Vite), Express.js, Python (FastAPI/Flask), Go, or vanilla static sites.'
       );
     }
 
@@ -222,7 +273,7 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
       where: { id: project.id },
       data: { framework },
     });
-    await appendLog(`Detected framework: ${framework}\n`);
+    await appendLog(`Detected/assigned framework: ${framework} (routing internal port ${internalPort})\n`);
 
     // 4. Generate Dockerfile automatically
     await appendLog(`Generating Dockerfile for ${framework}...\n`);
@@ -242,7 +293,6 @@ RUN npm run build
 # Stage 2: Serve
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-# Copy custom nginx config if exists, or use default
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 `;
@@ -265,6 +315,91 @@ EXPOSE 3000
 ENV PORT=3000
 ENV NODE_ENV=production
 CMD ["npm", "start"]
+`;
+    } else if (framework === 'nuxt') {
+      dockerfileContent = `
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve Nuxt app
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=builder /app/.output ./.output
+COPY --from=builder /app/package.json ./package.json
+EXPOSE 3000
+ENV PORT=3000
+ENV NODE_ENV=production
+CMD ["node", ".output/server/index.mjs"]
+`;
+    } else if (framework === 'sveltekit') {
+      dockerfileContent = `
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve SvelteKit app
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/package.json ./package.json
+RUN npm install --omit=dev
+EXPOSE 3000
+ENV PORT=3000
+ENV NODE_ENV=production
+CMD ["node", "build"]
+`;
+    } else if (framework === 'astro') {
+      dockerfileContent = `
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve static Astro files
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+`;
+    } else if (framework === 'python') {
+      dockerfileContent = `
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt* pyproject.toml* poetry.lock* ./
+RUN pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir . || true
+COPY . .
+EXPOSE 8000
+ENV PORT=8000
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+`;
+    } else if (framework === 'go') {
+      dockerfileContent = `
+# Stage 1: Build binary
+FROM golang:1.21-alpine AS builder
+WORKDIR /app
+COPY go.mod* go.sum* ./
+RUN if [ -f go.mod ]; then go mod download; fi
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+
+# Stage 2: Minimal Alpine runtime
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/main .
+EXPOSE 8080
+CMD ["./main"]
 `;
     } else {
       // Express or general Node

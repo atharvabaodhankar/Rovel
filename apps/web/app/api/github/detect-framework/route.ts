@@ -18,9 +18,11 @@ export async function GET(request: Request) {
 
     const [owner, repoName] = repo.split('/');
 
-    // We will attempt to fetch package.json from the default branches: main first, then master.
+    // We will attempt to detect framework files from the default branches: main first, then master.
     const branches = ['main', 'master'];
-    let packageJsonData = null;
+    let detectedFramework: string | null = null;
+    let detectedReason = '';
+    let packageName = repoName;
     let fetchError = null;
 
     const clientId = process.env.GITHUB_CLIENT_ID;
@@ -39,61 +41,100 @@ export async function GET(request: Request) {
       try {
         const cleanPath = pathParam.trim().replace(/^\/+|\/+$/g, '');
         const packageJsonPath = cleanPath ? `${cleanPath}/package.json` : 'package.json';
-        const url = `https://api.github.com/repos/${owner}/${repoName}/contents/${packageJsonPath}?ref=${branch}`;
-        const response = await fetch(url, { headers });
+        const goModPath = cleanPath ? `${cleanPath}/go.mod` : 'go.mod';
+        const reqTxtPath = cleanPath ? `${cleanPath}/requirements.txt` : 'requirements.txt';
+        const pyprojectPath = cleanPath ? `${cleanPath}/pyproject.toml` : 'pyproject.toml';
 
-        if (response.ok) {
-          const fileData = await response.json();
+        // 1. Try package.json
+        const packageJsonUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${packageJsonPath}?ref=${branch}`;
+        const pResponse = await fetch(packageJsonUrl, { headers });
+
+        if (pResponse.ok) {
+          const fileData = await pResponse.json();
           if (fileData.content && fileData.encoding === 'base64') {
             const decoded = Buffer.from(fileData.content, 'base64').toString('utf-8');
-            packageJsonData = JSON.parse(decoded);
-            break; // Successfully fetched and parsed
+            const packageJsonData = JSON.parse(decoded);
+            packageName = packageJsonData.name || repoName;
+            
+            const deps = {
+              ...(packageJsonData.dependencies || {}),
+              ...(packageJsonData.devDependencies || {}),
+            };
+
+            if (deps['next']) {
+              detectedFramework = 'nextjs';
+              detectedReason = 'Detected "next" in package.json';
+            } else if (deps['nuxt']) {
+              detectedFramework = 'nuxt';
+              detectedReason = 'Detected "nuxt" in package.json';
+            } else if (deps['@sveltejs/kit'] || deps['svelte']) {
+              detectedFramework = 'sveltekit';
+              detectedReason = 'Detected "svelte" or "@sveltejs/kit" in package.json';
+            } else if (deps['astro']) {
+              detectedFramework = 'astro';
+              detectedReason = 'Detected "astro" in package.json';
+            } else if (deps['express']) {
+              detectedFramework = 'express';
+              detectedReason = 'Detected "express" in package.json';
+            } else if (deps['react'] && (deps['vite'] || deps['@vitejs/plugin-react'] || deps['@vitejs/plugin-react-swc'])) {
+              detectedFramework = 'react-vite';
+              detectedReason = 'Detected "react" and "vite" in package.json';
+            } else if (deps['react']) {
+              detectedFramework = 'react-vite';
+              detectedReason = 'Detected "react" in package.json';
+            } else {
+              detectedFramework = 'static';
+              detectedReason = 'No specific framework dependencies detected in package.json';
+            }
+            break; // Found and parsed package.json successfully
           }
-        } else if (response.status !== 404) {
-          fetchError = `GitHub API returned status ${response.status}`;
         }
+
+        // 2. Try go.mod
+        const goModUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${goModPath}?ref=${branch}`;
+        const gResponse = await fetch(goModUrl, { headers });
+        if (gResponse.ok) {
+          detectedFramework = 'go';
+          detectedReason = 'Detected "go.mod" file';
+          break;
+        }
+
+        // 3. Try requirements.txt or pyproject.toml
+        const reqTxtUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${reqTxtPath}?ref=${branch}`;
+        const rResponse = await fetch(reqTxtUrl, { headers });
+        if (rResponse.ok) {
+          detectedFramework = 'python';
+          detectedReason = 'Detected "requirements.txt" file';
+          break;
+        }
+
+        const pyprojectUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${pyprojectPath}?ref=${branch}`;
+        const pyResponse = await fetch(pyprojectUrl, { headers });
+        if (pyResponse.ok) {
+          detectedFramework = 'python';
+          detectedReason = 'Detected "pyproject.toml" file';
+          break;
+        }
+        
       } catch (err: any) {
-        console.error(`Error fetching package.json on branch ${branch}:`, err);
+        console.error(`Error detecting on branch ${branch}:`, err);
         fetchError = err.message;
       }
     }
 
-    if (!packageJsonData) {
+    if (!detectedFramework) {
       return NextResponse.json({
         framework: 'static',
         detected: false,
-        reason: fetchError || 'package.json not found in main or master branches',
+        reason: fetchError || 'No supported project files (package.json, go.mod, requirements.txt) found in main or master branches',
       });
     }
 
-    // Detect framework based on dependencies
-    const deps = {
-      ...(packageJsonData.dependencies || {}),
-      ...(packageJsonData.devDependencies || {}),
-    };
-
-    let framework = 'static';
-    let reason = 'No specific framework dependencies detected in package.json';
-
-    if (deps['next']) {
-      framework = 'nextjs';
-      reason = 'Detected "next" in dependencies';
-    } else if (deps['express']) {
-      framework = 'express';
-      reason = 'Detected "express" in dependencies';
-    } else if (deps['react'] && (deps['vite'] || deps['@vitejs/plugin-react'] || deps['@vitejs/plugin-react-swc'])) {
-      framework = 'react-vite';
-      reason = 'Detected "react" and "vite" in dependencies';
-    } else if (deps['react']) {
-      framework = 'react-vite';
-      reason = 'Detected "react" in dependencies';
-    }
-
     return NextResponse.json({
-      framework,
+      framework: detectedFramework,
       detected: true,
-      reason,
-      packageName: packageJsonData.name || repoName,
+      reason: detectedReason,
+      packageName,
     });
 
   } catch (error: any) {
