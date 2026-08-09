@@ -1,8 +1,12 @@
 import * as dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-// Load environment variables from root .env
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+// Load environment variables from root .env or .env.production
+const envPath = fs.existsSync(path.resolve(process.cwd(), '../../.env.production'))
+  ? path.resolve(process.cwd(), '../../.env.production')
+  : path.resolve(process.cwd(), '../../.env');
+dotenv.config({ path: envPath });
 
 import { Worker, Job } from 'bullmq';
 import { buildAndDeploy } from './builder.js';

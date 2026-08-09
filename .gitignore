@@ -5,3 +5,4 @@ dist/
 builds/
 nginx_logs/
 *.log
+.env.production

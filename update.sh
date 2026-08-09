@@ -15,7 +15,7 @@ git pull origin main
 npm install
 
 # 4. Apply database schema changes
-node -e "require('dotenv').config(); require('child_process').spawn('npm', ['run', 'db:push', '-w', 'packages/db'], { stdio: 'inherit', shell: true })"
+node -e "const fs = require('fs'); const path = require('path'); const envPath = fs.existsSync('.env.production') ? '.env.production' : '.env'; require('dotenv').config({ path: envPath }); require('child_process').spawn('npm', ['run', 'db:push', '-w', 'packages/db'], { stdio: 'inherit', shell: true })"
 
 # 5. Compile Next.js and worker code
 npm run build:all
