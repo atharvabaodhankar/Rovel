@@ -5,7 +5,7 @@ This guide provides a sequential, step-by-step walkthrough to deploy the **Rovel
 ---
 
 ## 🏗️ Core Architecture Overview
-Rovel is a self-hosted Platform-as-a-Service (PaaS). It runs a Next.js web dashboard (control plane) and a Node.js worker daemon. The worker compiles and deploys developer applications in isolated Docker containers, dynamically routing traffic to them via Nginx reverse proxies and securing them with Let's Encrypt SSL certificates.
+Rovel is a self-hosted Platform-as-a-Service (PaaS). It runs a Next.js web dashboard (control plane) and a Node.js worker daemon. The worker compiles and deploys developer applications in isolated Docker containers, dynamically routing traffic to them via Nginx reverse proxies, managing Scale-to-Zero hibernation, intercepting cold starts with an Auto-Wake Gateway, and securing them with Let's Encrypt SSL certificates.
 
 ---
 
@@ -28,8 +28,8 @@ Configure your security group rules to allow the following public ingress traffi
 | Port | Protocol | Source | Purpose |
 | :--- | :--- | :--- | :--- |
 | **22** | TCP (SSH) | Anywhere (`0.0.0.0/0` or My IP) | Remote terminal access |
-| **80** | TCP (HTTP) | Anywhere (`0.0.0.0/0`) | Domain validation and HTTP routing |
-| **443** | TCP (HTTPS) | Anywhere (`0.0.0.0/0`) | Secure SSL application routing |
+| **80** | TCP (HTTP) | Anywhere (`0.0.0.0/0`) | Domain validation, HTTP routing, and SSL redirects |
+| **443** | TCP (HTTPS) | Anywhere (`0.0.0.0/0`) | Secure SSL dashboard and user application routing |
 
 ---
 
@@ -80,62 +80,38 @@ Verify with `free -h`. You should see `Swap: 4.0Gi`.
 
 ---
 
-## 🐳 Step 5: Install Docker CE (Official)
+## 🔧 Step 5: Adjust Directory Permissions (Critical)
 
-Install Docker CE using the official installation script:
+Before running the initial build, configure the permissions for the Nginx and Let's Encrypt directories:
+
+### 1. Let's Encrypt Traversal Permissions
 ```bash
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker $USER
-newgrp docker
+sudo chmod -R 755 /etc/letsencrypt/
 ```
-*Reason*: The default Ubuntu package manager (`apt`) does not contain the official `docker-ce` or `docker-compose-plugin` packages in its default repositories.
+*Reason*: Let's Encrypt certificates are symlinked from `/etc/letsencrypt/live/` to `/etc/letsencrypt/archive/`. If parent directories lack `755` permissions, the non-root `ubuntu` worker process cannot verify certificate existence and will fall back to HTTP.
 
----
-
-## 📦 Step 6: Install Node.js, Nginx, and System Packages
-
-Install the remaining dependencies and configure system variables:
+### 2. Nginx Sites Directory Ownership
 ```bash
-# Install Node.js v22 and npm
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs nginx certbot python3-certbot-nginx
-
-# Configure Nginx passwordless reload for the worker
-echo "$USER ALL=(ALL) NOPASSWD: /usr/sbin/nginx" | sudo tee /etc/sudoers.d/rovel-nginx
-
-# Create builds directory and adjust permissions
-sudo mkdir -p /opt/rovel/builds
-sudo chown -R $USER:$USER /opt/rovel
-
-# Open firewall rules
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-```
-
----
-
-## 🛡️ Step 7: Apply Pre-Emptive Directory Permissions
-
-Before running the application, you must adjust folder permissions so that the worker daemon (running as the `ubuntu` user) can write Nginx routing configs and read SSL keys without encountering permission errors:
-
-```bash
-# 1. Grant the 'ubuntu' user permission to write Nginx configurations
-# (Prevents EACCES: permission denied errors during deployments)
 sudo chown -R ubuntu:ubuntu /etc/nginx/sites-enabled/
+```
+*Reason*: When a new app is deployed, the worker generates and writes an Nginx `.conf` file into `/etc/nginx/sites-enabled/`. If owned by `root`, the build will fail with a `Permission Denied (EACCES)` error.
 
-# 2. Grant the 'ubuntu' user permission to read the SSL certificates
-# (Allows the worker to traverse letsencrypt directories and read private keys)
-sudo chmod 755 /etc/letsencrypt/
-sudo chmod -R 755 /etc/letsencrypt/live/
-sudo chmod -R 755 /etc/letsencrypt/archive/
+---
+
+## 🚀 Step 6: Clone and Bootstrap Rovel
+
+Clone the repository into the `ubuntu` home directory and run the setup script:
+```bash
+cd ~
+git clone https://github.com/atharvabaodhankar/Rovel.git
+cd Rovel
+chmod +x setup.sh update.sh
+./setup.sh
 ```
 
 ---
 
-## 🔑 Step 8: Configure Environment Variables
+## ⚙️ Step 7: Environment Configuration
 
 Create and configure your production environment file in the root `~/Rovel` folder:
 ```bash
@@ -158,16 +134,14 @@ NEXT_PUBLIC_BASE_DOMAIN="apps.rovel.dev"
 JWT_SECRET="YOUR_JWT_SECRET"
 ENCRYPTION_KEY="YOUR_32_CHAR_ENCRYPTION_KEY"
 
-# GitHub OAuth App (Select the app matching the console.rovel.dev domain)
+# GitHub OAuth App (Registered for console.rovel.dev)
 GITHUB_CLIENT_ID="Ov23lipY6oaKaX3j80hg"
 GITHUB_CLIENT_SECRET="YOUR_GITHUB_OAUTH_SECRET"
 ```
 
-*Note*: Ensure that the GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET match your registered GitHub Developer Settings for **Rovel** (Homepage: `https://console.rovel.dev`, Callback: `https://console.rovel.dev/api/auth/callback`).
-
 ---
 
-## 🐘 Step 9: Boot Services and Compile Code
+## 🐘 Step 8: Boot Services and Compile Code
 
 Run these commands to start the databases, install packages, sync schemas, and compile the platform:
 
@@ -182,24 +156,19 @@ npm install
 node -e "const fs = require('fs'); const path = require('path'); const envPath = fs.existsSync('.env.production') ? '.env.production' : '.env'; require('dotenv').config({ path: envPath }); require('child_process').spawn('npm', ['run', 'db:push', '-w', 'packages/db'], { stdio: 'inherit', shell: true })"
 
 # 4. Compile Next.js and worker code
-# (Run this command to build the spaces. If dependency order issues arise, running it a second time completes the build)
 npm run build:all
 ```
 
 ---
 
-## 🌐 Step 10: Configure Nginx Routing
+## 🌐 Step 9: Configure Nginx Routing
 
 Copy the server block configuration and remove the default index page:
 ```bash
 sudo cp infrastructure/nginx/rovel.conf /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 ```
-Open `/etc/nginx/sites-enabled/rovel.conf`:
-```bash
-nano /etc/nginx/sites-enabled/rovel.conf
-```
-Verify that the `server_name` directive includes **both** the console and root domain so they both resolve to Next.js on port 3000:
+Open `/etc/nginx/sites-enabled/rovel.conf` and verify `server_name` includes both domains:
 ```nginx
 server_name console.rovel.dev rovel.dev;
 ```
@@ -210,30 +179,23 @@ sudo systemctl reload nginx
 
 ---
 
-## 🔐 Step 11: Generate SSL Certificates
+## 🔐 Step 10: Generate SSL Certificates
 
 ### 1. Provision SSL for the Dashboard and Root Domain
 ```bash
 sudo certbot --nginx -d console.rovel.dev -d rovel.dev
 ```
-*Note*: When Certbot prompts you, select **Expand (E)** to bundle both domains into the same certificate.
 
 ### 2. Generate the Wildcard SSL Certificate (For User Applications)
-Request a wildcard SSL certificate via a manual DNS TXT challenge:
 ```bash
 sudo certbot certonly --manual --preferred-challenges=dns -d "*.apps.rovel.dev" -d "apps.rovel.dev"
 ```
-1. Certbot will output a verification value.
-2. Go to your DNS registrar (Name.com) and add a **`TXT`** record:
-   * **Host**: `_acme-challenge.apps`
-   * **Answer**: `PASTE_THE_CERTBOT_VALUE`
-3. Wait 60 seconds for DNS propagation, then press **Enter** in your SSH terminal.
+1. Add the `_acme-challenge.apps` **`TXT`** record in your registrar.
+2. Wait 60 seconds for DNS propagation, then press **Enter** in your terminal.
 
 ---
 
-## 🔄 Step 12: Start Services in PM2
-
-Install PM2 and start the background applications:
+## 🔄 Step 11: Start Services in PM2
 
 ```bash
 # Install PM2 globally
@@ -245,9 +207,34 @@ pm2 start dist/index.js --name "rovel-worker" --cwd apps/worker
 
 # Configure PM2 to restart automatically on system reboots
 pm2 startup systemd
-# (Copy and execute the command printed in the terminal output of the step above)
+# (Copy and execute the output command from terminal)
 pm2 save
 ```
 
-### Note on Client-Side Rebuilds
-Environment variables starting with `NEXT_PUBLIC_` are baked statically into the Next.js bundle during the build phase. If you modify `.env.production` later, you must re-run `npm run build:all` and `pm2 restart all --update-env` to apply the changes to the browser dashboard.
+---
+
+## ⚡ Step 12: Scale-to-Zero & Auto-Wake Gateway
+
+Rovel includes built-in container hibernation to save RAM on your EC2 instance:
+* **Automatic Reaper**: The worker process checks containers every 60 seconds. Inactive containers are stopped with `docker stop` after their configured idle timeout (default: 15 minutes).
+* **Nginx 502 Interceptor**: When a user visits a sleeping app, Nginx intercepts the `502 Bad Gateway` error (`error_page 502 503 504 = @waking_page;`) and proxies to `/wake?app=<slug>`.
+* **Auto-Wake Gateway**: The visitor sees an animated dark-mode loading UI while `POST /api/wake` runs `docker start` in the background, automatically refreshing into the live application in < 2 seconds.
+
+---
+
+## 🌿 Step 13: Branch Deployments & Rollbacks
+
+* **Branch Builds**: Deploy any branch from the dashboard or via GitHub push webhooks.
+* **Badges**: Pushes to the default branch are tagged **🟢 Live Production**; other branches are tagged **🔵 Preview**.
+* **1-Click Rollback / Promote**: On any ready deployment, click **"Promote"** in the Global Deployments table or Project History tab to instantly swap the running container image to that version.
+
+---
+
+## 🤖 Step 14: Automated CI/CD (GitHub Actions)
+
+Add the following GitHub Secrets to your repository (`Settings -> Secrets and variables -> Actions`):
+* `EC2_HOST`: `YOUR_EC2_PUBLIC_IP`
+* `EC2_USER`: `ubuntu`
+* `EC2_SSH_KEY`: The contents of your `rovel-key.pem` private key.
+
+Every `git push origin main` will automatically run [update.sh](file:///c:/Users/baodh/OneDrive/Desktop/Projects/CodeShip/update.sh) to pull code, run Prisma migrations, rebuild workspaces, and restart PM2 without manual SSH.
