@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Rocket, Terminal, Calendar, AlertTriangle, Check, RefreshCw, GitBranch } from 'lucide-react';
+import { Loader2, Rocket, Terminal, Calendar, AlertTriangle, Check, RefreshCw, GitBranch, RotateCcw } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 
 interface Deployment {
@@ -18,6 +18,8 @@ interface Deployment {
     id: string;
     name: string;
     slug: string;
+    defaultBranch?: string;
+    activeDeploymentId?: string | null;
   };
 }
 
@@ -33,6 +35,20 @@ export default function GlobalDeployments() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [promoteSuccess, setPromoteSuccess] = useState<string | null>(null);
+
+  const fetchDeployments = async () => {
+    try {
+      const depRes = await fetch('/api/deployments');
+      if (depRes.ok) {
+        const depData = await depRes.json();
+        setDeployments(depData.deployments || []);
+      }
+    } catch (e) {
+      console.error('Failed to load deployments:', e);
+    }
+  };
 
   useEffect(() => {
     async function init() {
@@ -45,11 +61,7 @@ export default function GlobalDeployments() {
         const meData = await meRes.json();
         setUser(meData.user);
 
-        const depRes = await fetch('/api/deployments');
-        if (depRes.ok) {
-          const depData = await depRes.json();
-          setDeployments(depData.deployments || []);
-        }
+        await fetchDeployments();
       } catch (e) {
         console.error('Failed to load deployments:', e);
       } finally {
@@ -58,6 +70,31 @@ export default function GlobalDeployments() {
     }
     init();
   }, [router]);
+
+  const handlePromote = async (e: React.MouseEvent, projectId: string, deploymentId: string) => {
+    e.stopPropagation();
+    setPromotingId(deploymentId);
+    setPromoteSuccess(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deploymentId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPromoteSuccess(data.message || 'Build promoted to Live Production.');
+        await fetchDeployments();
+        setTimeout(() => setPromoteSuccess(null), 4000);
+      } else {
+        alert(data.error || 'Failed to promote build');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to promote build');
+    } finally {
+      setPromotingId(null);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -138,6 +175,13 @@ export default function GlobalDeployments() {
         <p className="font-body-md text-body-md text-neutral-500 text-sm font-light">Chronological build feed across all your hosted projects.</p>
       </div>
 
+      {promoteSuccess && (
+        <div className="border border-emerald-600/40 bg-emerald-950/30 text-emerald-300 px-4 py-3 rounded text-sm font-mono flex items-center gap-2 mt-2">
+          <Check size={16} />
+          {promoteSuccess}
+        </div>
+      )}
+
       <div className="card-bg border border-layout rounded-lg overflow-hidden mt-2">
         <div className="p-4 border-b border-layout bg-[#0B0B0B] flex justify-between items-center">
           <h2 className="font-headline-md text-primary font-semibold flex items-center gap-2 text-sm uppercase font-mono tracking-wider">
@@ -167,49 +211,74 @@ export default function GlobalDeployments() {
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Status</th>
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Duration</th>
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Triggered</th>
+                  <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="font-body-sm text-body-sm divide-y divide-[#1A1A1A] text-sm text-neutral-300">
-                {deployments.map((dep) => (
-                  <tr 
-                    key={dep.id}
-                    onClick={() => router.push(`/projects/${dep.project.id}`)}
-                    className="hover-bg transition-colors cursor-pointer group"
-                  >
-                    <td className="py-3.5 px-4 text-primary font-semibold group-hover:underline decoration-neutral-500">
-                      {dep.project.name}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-neutral-400">
-                      {dep.id.slice(0, 18)}...
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono text-xs text-neutral-300 flex items-center gap-1">
-                        <GitBranch size={11} className="text-neutral-500" />
-                        {dep.branch || 'main'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {dep.isProduction ? (
-                        <span className="border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 px-2 py-0.5 rounded text-[11px] font-mono font-medium flex items-center gap-1 w-fit">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Production
+                {deployments.map((dep) => {
+                  const isLiveProduction = dep.id === dep.project.activeDeploymentId || (dep.isProduction && dep.status === 'READY');
+                  return (
+                    <tr 
+                      key={dep.id}
+                      onClick={() => router.push(`/projects/${dep.project.id}`)}
+                      className="hover-bg transition-colors cursor-pointer group"
+                    >
+                      <td className="py-3.5 px-4 text-primary font-semibold group-hover:underline decoration-neutral-500">
+                        {dep.project.name}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-neutral-400">
+                        {dep.id.slice(0, 18)}...
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono text-xs text-neutral-300 flex items-center gap-1">
+                          <GitBranch size={11} className="text-neutral-500" />
+                          {dep.branch || 'main'}
                         </span>
-                      ) : (
-                        <span className="border border-sky-800/40 bg-sky-950/30 text-sky-300 px-2 py-0.5 rounded text-[11px] font-mono w-fit">
-                          Preview
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4">{getStatusBadge(dep.status)}</td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-neutral-400">
-                      {calculateDuration(dep.startedAt, dep.completedAt)}
-                    </td>
-                    <td className="py-3.5 px-4 text-neutral-500 font-light flex items-center gap-1.5 font-mono text-xs">
-                      <Calendar size={12} className="text-neutral-600" />
-                      {getTimeAgo(dep.startedAt)}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {isLiveProduction ? (
+                          <span className="border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 px-2.5 py-0.5 rounded text-[11px] font-mono font-semibold flex items-center gap-1.5 w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Production
+                          </span>
+                        ) : dep.isProduction ? (
+                          <span className="border border-neutral-700 bg-neutral-900 text-neutral-300 px-2 py-0.5 rounded text-[11px] font-mono w-fit">
+                            Previous Production
+                          </span>
+                        ) : (
+                          <span className="border border-sky-800/40 bg-sky-950/30 text-sky-300 px-2 py-0.5 rounded text-[11px] font-mono w-fit">
+                            Preview
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">{getStatusBadge(dep.status)}</td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-neutral-400">
+                        {calculateDuration(dep.startedAt, dep.completedAt)}
+                      </td>
+                      <td className="py-3.5 px-4 text-neutral-500 font-light flex items-center gap-1.5 font-mono text-xs">
+                        <Calendar size={12} className="text-neutral-600" />
+                        {getTimeAgo(dep.startedAt)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {dep.status === 'READY' && !isLiveProduction && (
+                          <button
+                            onClick={(e) => handlePromote(e, dep.project.id, dep.id)}
+                            disabled={promotingId === dep.id}
+                            className="text-xs font-mono border border-layout hover:border-white hover:text-white px-2.5 py-1 rounded bg-neutral-900 transition-all inline-flex items-center gap-1.5 text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+                            title="Promote this build to Live Production"
+                          >
+                            {promotingId === dep.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <RotateCcw size={12} />
+                            )}
+                            Promote
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

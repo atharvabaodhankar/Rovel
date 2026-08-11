@@ -32,6 +32,24 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Auto-reconcile legacy project if activeDeploymentId is missing
+    if (!project.activeDeploymentId && project.deployments.length > 0) {
+      const latestReady = project.deployments.find((d) => d.status === 'READY') || project.deployments[0];
+      if (latestReady) {
+        await prisma.project.update({
+          where: { id: project.id },
+          data: { activeDeploymentId: latestReady.id },
+        });
+        await prisma.deployment.update({
+          where: { id: latestReady.id },
+          data: { isProduction: true, environment: 'production' },
+        });
+        project.activeDeploymentId = latestReady.id;
+        latestReady.isProduction = true;
+        latestReady.environment = 'production';
+      }
+    }
+
     return NextResponse.json({ project });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

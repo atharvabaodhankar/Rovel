@@ -1149,7 +1149,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     </thead>
                     <tbody className="font-body-sm divide-y divide-[#1A1A1A] text-sm text-neutral-300">
                       {project.deployments.map((deployment) => {
-                        const isCurrentLive = deployment.id === (project.activeDeploymentId || latestDeployment?.id) && deployment.isProduction;
+                        const isCurrentLive = deployment.id === (project.activeDeploymentId || latestDeployment?.id) && deployment.status === 'READY';
                         return (
                           <tr
                             key={deployment.id}
