@@ -561,6 +561,17 @@ server {
     ssl_certificate ${sslCertPath};
     ssl_certificate_key ${sslKeyPath};
 
+    # Intercept sleeping container errors and route to Rovel Wake UI
+    error_page 502 503 504 = @waking_page;
+
+    location @waking_page {
+        proxy_pass http://127.0.0.1:3000/wake?app=${project.slug};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${hostPort};
         proxy_set_header Host $host;
@@ -576,6 +587,17 @@ server {
 server {
     listen 80;
     server_name ${project.slug}.${baseDomain};
+
+    # Intercept sleeping container errors and route to Rovel Wake UI
+    error_page 502 503 504 = @waking_page;
+
+    location @waking_page {
+        proxy_pass http://127.0.0.1:3000/wake?app=${project.slug};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     location / {
         proxy_pass http://127.0.0.1:${hostPort};
