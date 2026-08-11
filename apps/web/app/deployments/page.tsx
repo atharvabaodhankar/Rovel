@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Rocket, Terminal, Calendar, AlertTriangle, Check, RefreshCw } from 'lucide-react';
+import { Loader2, Rocket, Terminal, Calendar, AlertTriangle, Check, RefreshCw, GitBranch } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 
 interface Deployment {
   id: string;
   commitHash: string | null;
+  branch?: string;
+  isProduction?: boolean;
+  environment?: string;
   status: string;
   startedAt: string;
   completedAt: string | null;
@@ -159,7 +162,8 @@ export default function GlobalDeployments() {
                 <tr className="bg-[#050505] border-b border-layout">
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Project</th>
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Deployment ID</th>
-                  <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Commit</th>
+                  <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Branch</th>
+                  <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Environment</th>
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Status</th>
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Duration</th>
                   <th className="py-3 px-4 font-metadata text-neutral-500 uppercase font-light text-xs font-mono">Triggered</th>
@@ -179,19 +183,28 @@ export default function GlobalDeployments() {
                       {dep.id.slice(0, 18)}...
                     </td>
                     <td className="py-3.5 px-4">
-                      {dep.commitHash ? (
-                        <span className="font-mono bg-neutral-900 border border-layout px-2 py-0.5 rounded text-xs text-white">
-                          {dep.commitHash.slice(0, 7)}
+                      <span className="font-mono text-xs text-neutral-300 flex items-center gap-1">
+                        <GitBranch size={11} className="text-neutral-500" />
+                        {dep.branch || 'main'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {dep.isProduction ? (
+                        <span className="border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 px-2 py-0.5 rounded text-[11px] font-mono font-medium flex items-center gap-1 w-fit">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Production
                         </span>
                       ) : (
-                        <span className="text-neutral-600 font-mono text-xs">—</span>
+                        <span className="border border-sky-800/40 bg-sky-950/30 text-sky-300 px-2 py-0.5 rounded text-[11px] font-mono w-fit">
+                          Preview
+                        </span>
                       )}
                     </td>
                     <td className="py-3.5 px-4">{getStatusBadge(dep.status)}</td>
                     <td className="py-3.5 px-4 font-mono text-xs text-neutral-400">
                       {calculateDuration(dep.startedAt, dep.completedAt)}
                     </td>
-                    <td className="py-3.5 px-4 text-neutral-500 font-light flex items-center gap-1.5">
+                    <td className="py-3.5 px-4 text-neutral-500 font-light flex items-center gap-1.5 font-mono text-xs">
                       <Calendar size={12} className="text-neutral-600" />
                       {getTimeAgo(dep.startedAt)}
                     </td>

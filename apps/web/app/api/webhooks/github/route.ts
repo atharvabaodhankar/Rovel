@@ -15,7 +15,10 @@ export async function POST(request: Request) {
     const commitHash = payload.head_commit?.id?.slice(0, 7) || 'webhook';
     const commitMessage = payload.head_commit?.message || 'Auto-redeploy via GitHub push';
 
-    console.log(`[Webhook] Received push event for repo: ${repoFullName}, commit: ${commitHash}`);
+    const ref = payload.ref || 'refs/heads/main';
+    const branch = ref.replace(/^refs\/heads\//, '') || 'main';
+
+    console.log(`[Webhook] Received push event for repo: ${repoFullName}, branch: ${branch}, commit: ${commitHash}`);
 
     // Find all active projects connected to this repository
     const projects = await prisma.project.findMany({
@@ -36,18 +39,23 @@ export async function POST(request: Request) {
 
     // Trigger redeployment for each matching project
     for (const project of projects) {
+      const isProduction = branch === (project.defaultBranch || 'main');
+
       const deployment = await prisma.deployment.create({
         data: {
           projectId: project.id,
           commitHash,
+          branch,
+          isProduction,
+          environment: isProduction ? 'production' : 'preview',
           status: 'PENDING',
-          logs: `Auto-redeploy triggered by GitHub push event.\nCommit: ${commitHash} - ${commitMessage}\nWaiting in queue...\n`,
+          logs: `Auto-redeploy triggered by GitHub push event.\nBranch: ${branch} (${isProduction ? 'Production' : 'Preview'})\nCommit: ${commitHash} - ${commitMessage}\nWaiting in queue...\n`,
         },
       });
 
       await getDeploymentQueue().add('build', { deploymentId: deployment.id });
       deploymentsCreated.push({ projectId: project.id, deploymentId: deployment.id });
-      console.log(`[Webhook] Enqueued redeployment for project ${project.name} (ID: ${project.id})`);
+      console.log(`[Webhook] Enqueued redeployment for project ${project.name} (ID: ${project.id}) on branch ${branch}`);
     }
 
     return NextResponse.json({

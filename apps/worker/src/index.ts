@@ -72,8 +72,53 @@ worker.on('completed', (job) => {
   console.log(`[Job ${job?.id}] Job completed successfully.`);
 });
 
-worker.on('failed', (job, err) => {
-  console.error(`[Job ${job?.id}] Job failed:`, err);
-});
+import { prisma } from '@rovel/db';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
+const execAsync = promisify(exec);
+
+// Scale-to-Zero (Auto-Sleeping) Daemon Sweeper
+const runScaleToZeroSweeper = async () => {
+  try {
+    const now = new Date();
+    const activeProjects = await prisma.project.findMany({
+      where: {
+        autoSleep: true,
+        status: 'READY',
+        containerStatus: 'RUNNING',
+        containerId: { not: null },
+      },
+    });
+
+    for (const project of activeProjects) {
+      const idleLimitMs = (project.idleTimeoutMinutes || 15) * 60 * 1000;
+      const lastActive = project.lastActiveAt ? new Date(project.lastActiveAt).getTime() : 0;
+      const elapsedMs = now.getTime() - lastActive;
+
+      if (elapsedMs >= idleLimitMs) {
+        const containerName = `rovel-${project.slug}`;
+        console.log(`[Scale-to-Zero] Project '${project.name}' is idle (${Math.round(elapsedMs / 60000)}m >= ${project.idleTimeoutMinutes}m). Suspending container: ${containerName}...`);
+        
+        try {
+          await execAsync(`docker stop ${containerName}`);
+          await prisma.project.update({
+            where: { id: project.id },
+            data: { containerStatus: 'SLEEPING' },
+          });
+          console.log(`[Scale-to-Zero] Container ${containerName} successfully put to SLEEP to save VPS RAM.`);
+        } catch (e: any) {
+          console.error(`[Scale-to-Zero] Failed to stop container ${containerName}:`, e.message);
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore sweeper loop errors to prevent worker crash
+  }
+};
+
+// Run sweeper every 60 seconds
+setInterval(runScaleToZeroSweeper, 60 * 1000);
+
+console.log('Scale-to-Zero (Auto-Sleeping) reaper daemon initialized (60s check interval).');
 console.log('Rovel background worker is running and waiting for jobs...');

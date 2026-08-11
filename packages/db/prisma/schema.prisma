@@ -20,33 +20,42 @@ model User {
 }
 
 model Project {
-  id           String                @id @default(uuid())
-  userId       String                @map("user_id")
-  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  slug         String                @unique
-  githubRepo   String                @map("github_repo")
-  framework    String
-  status       String                @default("PENDING") // PENDING, BUILDING, READY, FAILED
-  containerId  String?               @map("container_id")
-  assignedPort Int?                  @map("assigned_port")
-  rootDirectory String                @default("") @map("root_directory")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  deployments  Deployment[]
-  envVars      EnvironmentVariable[]
+  id                 String                @id @default(uuid())
+  userId             String                @map("user_id")
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  slug               String                @unique
+  githubRepo         String                @map("github_repo")
+  defaultBranch      String                @default("main") @map("default_branch")
+  framework          String
+  status             String                @default("PENDING") // PENDING, BUILDING, READY, FAILED
+  containerId        String?               @map("container_id")
+  assignedPort       Int?                  @map("assigned_port")
+  rootDirectory      String                @default("") @map("root_directory")
+  activeDeploymentId String?               @map("active_deployment_id")
+  autoSleep          Boolean               @default(true) @map("auto_sleep")
+  idleTimeoutMinutes Int                   @default(15) @map("idle_timeout_minutes")
+  containerStatus    String                @default("RUNNING") @map("container_status") // RUNNING, SLEEPING, STOPPED
+  lastActiveAt       DateTime              @default(now()) @map("last_active_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  deployments        Deployment[]
+  envVars            EnvironmentVariable[]
 
   @@map("projects")
 }
 
 model Deployment {
-  id          String    @id @default(uuid())
-  projectId   String    @map("project_id")
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  commitHash  String?   @map("commit_hash")
-  status      String    @default("PENDING") // PENDING, BUILDING, READY, FAILED
-  logs        String    @default("")
-  startedAt   DateTime  @default(now()) @map("started_at")
-  completedAt DateTime? @map("completed_at")
+  id           String    @id @default(uuid())
+  projectId    String    @map("project_id")
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  commitHash   String?   @map("commit_hash")
+  branch       String    @default("main")
+  isProduction Boolean   @default(false) @map("is_production")
+  environment  String    @default("production") // production, preview
+  status       String    @default("PENDING") // PENDING, BUILDING, READY, FAILED
+  logs         String    @default("")
+  startedAt    DateTime  @default(now()) @map("started_at")
+  completedAt  DateTime? @map("completed_at")
 
   @@map("deployments")
 }

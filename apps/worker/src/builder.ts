@@ -137,7 +137,8 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
     await fs.promises.mkdir(projectBuildPath, { recursive: true });
 
     // 2. Clone Repository
-    await appendLog(`Cloning repository: ${project.githubRepo}...\n`);
+    const targetBranch = deployment.branch || project.defaultBranch || 'main';
+    await appendLog(`Cloning repository: ${project.githubRepo} (branch: ${targetBranch})...\n`);
     const git = simpleGit();
     
     // Support both full GitHub URLs and owner/repo formats
@@ -148,7 +149,12 @@ export async function buildAndDeploy(deploymentId: string): Promise<void> {
       repoUrl = `${repoUrl}.git`;
     }
     
-    await git.clone(repoUrl, projectBuildPath);
+    try {
+      await git.clone(repoUrl, projectBuildPath, ['--branch', targetBranch, '--single-branch', '--depth', '1']);
+    } catch (cloneErr) {
+      await appendLog(`[Notice] Branch '${targetBranch}' clone failed, falling back to default clone...\n`);
+      await git.clone(repoUrl, projectBuildPath, ['--depth', '1']);
+    }
     await appendLog(`Successfully cloned repository.\n`);
 
     // Get current commit info if available
@@ -603,10 +609,28 @@ server {
     }
 
     // 11. Complete deployment
+    const isProduction = deployment.isProduction || targetBranch === (project.defaultBranch || 'main');
+
+    if (isProduction) {
+      await prisma.deployment.updateMany({
+        where: {
+          projectId: project.id,
+          id: { not: deploymentId },
+          isProduction: true,
+        },
+        data: {
+          isProduction: false,
+        },
+      });
+    }
+
     await prisma.deployment.update({
       where: { id: deploymentId },
       data: {
         status: 'READY',
+        branch: targetBranch,
+        isProduction,
+        environment: isProduction ? 'production' : 'preview',
         completedAt: new Date(),
       },
     });
@@ -616,6 +640,9 @@ server {
       data: {
         status: 'READY',
         containerId: newContainerId,
+        containerStatus: 'RUNNING',
+        activeDeploymentId: isProduction ? deploymentId : (project.activeDeploymentId || deploymentId),
+        lastActiveAt: new Date(),
       },
     });
 

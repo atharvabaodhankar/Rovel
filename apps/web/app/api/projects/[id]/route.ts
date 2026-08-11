@@ -38,6 +38,46 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const project = await prisma.project.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const { name, defaultBranch, autoSleep, idleTimeoutMinutes, rootDirectory } = body;
+
+    const updated = await prisma.project.update({
+      where: { id },
+      data: {
+        ...(name && { name: name.trim() }),
+        ...(defaultBranch !== undefined && { defaultBranch: defaultBranch.trim() || 'main' }),
+        ...(autoSleep !== undefined && { autoSleep: Boolean(autoSleep) }),
+        ...(idleTimeoutMinutes !== undefined && { idleTimeoutMinutes: Math.max(1, parseInt(idleTimeoutMinutes, 10) || 15) }),
+        ...(rootDirectory !== undefined && { rootDirectory: rootDirectory.trim() }),
+      },
+    });
+
+    return NextResponse.json({ success: true, project: updated });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
