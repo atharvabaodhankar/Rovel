@@ -20,7 +20,13 @@ node -e "const fs = require('fs'); const path = require('path'); const envPath =
 # 5. Compile Next.js and worker code
 npm run build:all
 
-# 6. Restart PM2 services with the updated environment variables
+# 6. Sanitize existing Nginx configs and reload proxy
+if [ -d "/etc/nginx/sites-enabled" ]; then
+  sudo sed -i 's|proxy_pass http://127.0.0.1:3000/wake?app=[^;]*;|rewrite ^.*$ /wake break;\n        proxy_pass http://127.0.0.1:3000;|g' /etc/nginx/sites-enabled/*.conf 2>/dev/null || true
+  sudo nginx -t 2>/dev/null && sudo systemctl reload nginx 2>/dev/null || true
+fi
+
+# 7. Restart PM2 services with the updated environment variables
 pm2 restart all --update-env
 
 echo "========================================="

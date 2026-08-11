@@ -626,6 +626,27 @@ server {
       try {
         await fs.promises.writeFile(nginxConfigPath, nginxConfig);
         await appendLog(`Nginx config written to ${nginxConfigPath}\n`);
+
+        // Sanitize any existing legacy .conf files in sites-enabled to prevent reload failure
+        try {
+          const files = await fs.promises.readdir('/etc/nginx/sites-enabled');
+          for (const file of files) {
+            if (file.endsWith('.conf')) {
+              const fullPath = path.join('/etc/nginx/sites-enabled', file);
+              const content = await fs.promises.readFile(fullPath, 'utf8');
+              if (content.includes('proxy_pass http://127.0.0.1:3000/wake?app=')) {
+                const fixed = content.replace(
+                  /proxy_pass http:\/\/127\.0\.0\.1:3000\/wake\?app=[^;]+;/g,
+                  'rewrite ^.*$ /wake break;\n        proxy_pass http://127.0.0.1:3000;'
+                );
+                await fs.promises.writeFile(fullPath, fixed);
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore read error if non-critical
+        }
+
         await appendLog(`Reloading Nginx proxy...\n`);
         await runCommand('sudo', ['nginx', '-s', 'reload'], process.cwd(), appendLog);
         await appendLog(`Nginx reloaded successfully.\n`);
